@@ -24,23 +24,23 @@ public class SelectionManager {
 		return sm;
 	}
 
-	public Action select(int x, int y) {
-
-	}
-
-	public Action selectElement(int x, int y, int w, int h) {
-
-	}
-
-	private Action selectElement(int x, int y) {
-
-	}
-
-	private Action selectWire(int x, int y) {
-
-	}
-
-	private Aciton selectEdge(int x, int y) {
-
-	}
+//	public Action select(int x, int y) {
+//
+//	}
+//
+//	public Action selectElement(int x, int y, int w, int h) {
+//
+//	}
+//
+//	private Action selectElement(int x, int y) {
+//
+//	}
+//
+//	private Action selectWire(int x, int y) {
+//
+//	}
+//
+//	private Aciton selectEdge(int x, int y) {
+//
+//	}
 }

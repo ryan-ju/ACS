@@ -6,7 +6,8 @@ package com.asys.editor.model;
 import java.util.ArrayList;
 
 /**
- * @author ryan
+ * 
+ * This class is both a container and a mediator of all managers.
  * 
  */
 public class CircuitManager {
@@ -15,10 +16,18 @@ public class CircuitManager {
 	private static ElementManager eltm;
 	private static WireManager wm;
 	private static PortManager pm;
+	private static EdgeManager edgm;
 
 	public static CircuitManager getInstance(){
 		if (cm == null){
 			cm = new CircuitManager();
+			wm = new WireManager();
+			eltm = new ElementManager();
+			edgm = new EdgeManager();
+			wm.init();
+			eltm.init();
+			edgm.init();
+			cm.cmls = new ArrayList<CircuitManagerListener>();
 		}
 		return cm;
 	}
@@ -36,26 +45,34 @@ public class CircuitManager {
 	}
 
 	public ElementManager getElementManager() {
-		if (eltm == null)
-			eltm = new ElementManager(this);
+		assert eltm != null;
 		return eltm;
 	}
 
 	public WireManager getWireManager() {
-		if (wm == null){
-			wm = new WireManager(this);
-		}
+		assert wm!=null;
 		return wm;
 	}
 
 	public PortManager getPortManager() {
-		if (pm == null)
-			pm = new PortManager(this);
 		return pm;
 	}
 
 	public EdgeManager getEdgeManager() {
-		return wm.getEdgeManager();
+		assert edgm != null;
+		return edgm;
+	}
+	
+	protected void setElementManagerChanged(){
+		fireStateChangedEvent();
+	}
+	
+	protected void setWireManagerChanged(){
+		fireStateChangedEvent();
+	}
+	
+	protected void setEdgeManagerChanged(){
+		fireStateChangedEvent();
 	}
 
 	protected void fireStateChangedEvent() {

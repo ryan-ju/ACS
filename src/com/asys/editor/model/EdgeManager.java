@@ -1,18 +1,158 @@
 package com.asys.editor.model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
+
+import com.asys.editor.model.ElementManager.ElementDictionary;
 
 public class EdgeManager {
-	private WireManager cm;
-	private HashMap<Integer, LinkedList<WireEdge>> h_edges, v_edges;
-	
-	public EdgeManager(WireManager cm) {
-		this.cm = cm;
-		h_edges = new HashMap<Integer, LinkedList<WireEdge> >();
-		v_edges = new HashMap<Integer, WireEdge>();
+	private WireManager wm;
+	private ElementManager em;
+	private final HashMap<Integer, ArrayList<WireEdge>> h_edges, v_edges;
+	// private final HashMap<Integer, ArrayList<RoutingPoint>> h_ps, v_ps;
+	private final ArrayList<Edge> overlap;
+	private boolean hasChanged;
+
+	public EdgeManager() {
+		h_edges = new HashMap<Integer, ArrayList<WireEdge>>();
+		v_edges = new HashMap<Integer, ArrayList<WireEdge>>();
+		// h_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
+		// v_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
+		overlap = new ArrayList<Edge>();
+		hasChanged = true;
 	}
-	
-	protected void addWire(Wire wire){
-		
+
+	public void init() {
+		this.wm = CircuitManager.getInstance().getWireManager();
+		this.em = CircuitManager.getInstance().getElementManager();
+	}
+
+	protected void build() {
+		h_edges.clear();
+		v_edges.clear();
+		for (Wire wire : wm.getWires()) {
+			addWire(wire);
+		}
+		hasChanged = false;
+	}
+
+	private void addWire(Wire wire) {
+		for (WireEdge edge : wire.getRoutingEdges()) {
+			if (edge.isVertical()) {
+				ArrayList<WireEdge> list = v_edges.get(edge.getP1().getX());
+				if (list == null) {
+					list = new ArrayList<WireEdge>();
+					v_edges.put(edge.getP1().getX(), list);
+				}
+				v_edges.get(edge.getP1().getX()).add(edge);
+			} else {
+				ArrayList<WireEdge> list = h_edges.get(edge.getP1().getY());
+				if (list == null) {
+					list = new ArrayList<WireEdge>();
+					h_edges.put(edge.getP1().getY(), list);
+				}
+				h_edges.get(edge.getP1().getY()).add(edge);
+			}
+		}
+	}
+
+	/**
+	 * 
+	 * @return An ArrayList of Edges representing the places of overlapping.
+	 *         Note the Edges are not RoutingEdges.
+	 */
+	public ArrayList<Edge> getOverlapping() {
+		if (hasChanged) {
+			overlap.clear();
+			build();
+			// Overlapping between Wires
+			for (ArrayList<WireEdge> list : v_edges.values()) {
+				for (int i = 0; i < list.size(); i++) {
+					for (int j = i + 1; j < list.size(); j++) {
+						Edge overlap_edge = WireEdge.getOverlap(list.get(i),
+								list.get(j));
+						if (overlap_edge != null) {
+							overlap.add(overlap_edge);
+						}
+					}
+
+				}
+			}
+			for (ArrayList<WireEdge> list : h_edges.values()) {
+				for (int i = 0; i < list.size(); i++) {
+					for (int j = i + 1; j < list.size(); j++) {
+						Edge overlap_edge = WireEdge.getOverlap(list.get(i),
+								list.get(j));
+						if (overlap_edge != null) {
+							overlap.add(overlap_edge);
+						}
+					}
+				}
+			}
+			ElementDictionary dic = em.getElementDictionary();
+			// Overlapping between Wires and Elements
+			for (Integer key : v_edges.keySet()) {
+				for (WireEdge edge : v_edges.get(key)) {
+					LinkedList<Element> list = dic.getElementsAtColumn(key);
+					if (list != null) {
+						for (Element elt : list) {
+							Edge overlap_edge = WireEdge.getOverlap(edge, elt);
+							if (overlap_edge != null) {
+								overlap.add(overlap_edge);
+							}
+						}
+					}
+				}
+			}
+			for (Integer key : h_edges.keySet()) {
+				for (WireEdge edge : h_edges.get(key)) {
+					LinkedList<Element> list = dic.getElementsAtRow(key);
+					if (list != null) {
+						for (Element elt : list) {
+							Edge overlap_edge = WireEdge.getOverlap(edge, elt);
+							if (overlap_edge != null) {
+								overlap.add(overlap_edge);
+							}
+						}
+					}
+				}
+			}
+		}
+		return overlap;
+	}
+
+	protected WireEdge getEdgeAt(int x, int y) {
+		if (hasChanged) {
+			build();
+		}
+		for (WireEdge edge : v_edges.get(x)) {
+			int min_y = Math.min(edge.getP1().getY(), edge.getP2().getY());
+			int max_y = Math.max(edge.getP1().getY(), edge.getP2().getY());
+			if (min_y <= y && y < max_y) {
+				return edge;
+			}
+		}
+		for (WireEdge edge : h_edges.get(y)) {
+			int min_x = Math.min(edge.getP1().getX(), edge.getP2().getX());
+			int max_x = Math.max(edge.getP1().getX(), edge.getP2().getX());
+			if (min_x <= y && y < max_x) {
+				return edge;
+			}
+		}
+		return null;
+	}
+
+	protected Wire getWireAt(int x, int y) {
+		WireEdge edge = getEdgeAt(x, y);
+		if (edge == null) {
+			return null;
+		} else {
+			return edge.getParent();
+		}
+	}
+
+	protected void update() {
+		hasChanged = true;
 	}
 }

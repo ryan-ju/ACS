@@ -51,6 +51,10 @@ public class TestBasicView {
 		w4rps.addLast(new RoutingPoint(46,26));
 		w4 = new Wire(a2.getOutport(0), a2.getInport(1), w4rps);
 		
+		w2.moveEdge(2, 0, -8);
+//		w2.moveEdge(0, 0, -5);
+		w2.moveEdge(1, 21, 0);
+		
 		em.addElement(a1);
 		em.addElement(a2);
 		em.addElement(i1);

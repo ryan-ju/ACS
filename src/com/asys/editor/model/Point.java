@@ -44,6 +44,10 @@ public class Point {
 		return x == other.getX() && y == other.getY();
 	}
 
+	public static boolean overlap(Point p1, Point p2) {
+		return p1.getX() == p2.getX() && p1.getY() == p2.getY();
+	}
+
 	protected void move(int dx, int dy) {
 		x += dx;
 		y += dy;

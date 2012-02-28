@@ -11,34 +11,40 @@ import java.util.List;
  *
  */
 public class WireManager {
-	private CircuitManager cm;
+	private static CircuitManager cm;
 	private ArrayList<Wire> wires;
-	private EdgeManager edgm;
+	private static EdgeManager edgm;
 
-	public WireManager(CircuitManager cm) {
-		this.cm = cm;
+	public WireManager() {
 		this.wires = new ArrayList<Wire>();
-		this.edgm = new EdgeManager(this);
+		
 	}
 	
-	public EdgeManager getEdgeManager(){
-		return edgm;
+	public void init(){
+		cm = CircuitManager.getInstance();
+		edgm = cm.getEdgeManager();
 	}
 	
 	protected void addWire(Wire new_wire){
 		wires.add(new_wire);
+		update();
 	}
 	
 	protected void addWire(List<Wire> new_wires){
 		wires.addAll(new_wires);
+		update();
 	}
 	
 	protected boolean remove(Wire rem_wire){
-		return wires.remove(rem_wire);
+		boolean b = wires.remove(rem_wire);
+		if (b) update();
+		return b;
 	}
 	
 	protected boolean remove(List<Wire> rem_wires){
-		return wires.removeAll(rem_wires);
+		boolean b = wires.removeAll(rem_wires);
+		if (b) update();
+		return b;
 	}
 	
 	public ArrayList<Wire> getWires(){
@@ -51,7 +57,11 @@ public class WireManager {
 	 * @param y
 	 * @return
 	 */
-	protected Wire wireAt(int x, int y){
-		
+	protected Wire getWireAt(int x, int y){
+		return edgm.getWireAt(x, y);
+	}
+	
+	protected void update(){
+		cm.setWireManagerChanged();
 	}
 }

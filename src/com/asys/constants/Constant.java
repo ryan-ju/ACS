@@ -18,7 +18,9 @@ public final class Constant {
 	public static final Long DEFAULT_MIN_DELAY = (long) 500,
 			DEFAULT_MAX_DELAY = (long) 1000;
 	public static final int GRID_SIZE = 10;
-
+	public static final float HIGHLIGHT_RADIUS_RATIO = 0.3f;
+	public static float HIGHLIGT_RADIUS = GRID_SIZE * HIGHLIGHT_RADIUS_RATIO;
+	
 	public static Property getDefaultProperty() {
 		Property p = new Property();
 		try {

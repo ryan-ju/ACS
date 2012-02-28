@@ -18,6 +18,4 @@ public class Executor {
 	public void execute(Command cmd){
 		
 	}
-	
-	private void 
 }

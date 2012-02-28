@@ -3,7 +3,6 @@
  */
 package com.asys.editor.model;
 
-import java.util.Iterator;
 import java.util.LinkedList;
 
 import com.asys.constants.Direction;
@@ -81,7 +80,16 @@ public class Wire {
 			rps.addLast(new RoutingPoint(getInport().getPosition()));
 		}
 	}
-
+	
+	/**
+	 * 
+	 * @param index
+	 * @param x1
+	 * @param y1
+	 * @param x2
+	 * @param y2
+	 * @return true - a new wire edge has been added
+	 */
 	protected boolean addRoutingPoints(int index, int x1, int y1, int x2, int y2) {
 		assert index >= 0 && index < getRoutingEdges().size();
 		WireEdge edge = getRoutingEdges().get(index);
@@ -165,6 +173,9 @@ public class Wire {
 		for (RoutingPoint rp : rps) {
 			rp.setPosition(rp.getX() + dx, rp.getY() + dy);
 		}
+		inrp_old.move(dx, dy);
+		outrp_old.move(dx, dy);
+		fireWireChanged();
 	}
 
 	protected void moveEdge(int index, int dx, int dy) {
@@ -203,6 +214,7 @@ public class Wire {
 			rpb.setY(rpb.getY() + dy);
 		}
 		purgeRoutingPoints();
+		fireWireChanged();
 	}
 
 	private void purgeRoutingPoints() {
@@ -263,6 +275,7 @@ public class Wire {
 		}
 		inrp_old = new RoutingPoint(ip.getPosition());
 		purgeRoutingPoints();
+		fireWireChanged();
 	}
 
 	protected void adjustForOutport() {
@@ -294,10 +307,12 @@ public class Wire {
 		}
 		outrp_old = new RoutingPoint(op.getPosition());
 		purgeRoutingPoints();
+		fireWireChanged();
 	}
 
 	private void setHasChanged() {
 		this.hasChanged = true;
+		fireWireChanged();
 	}
 
 	private void unsetHasChanged() {
@@ -320,5 +335,9 @@ public class Wire {
 		wire_cp.outrp_old = new RoutingPoint(outrp_old);
 		wire_cp.hasChanged = true;
 		return wire_cp;
+	}
+	
+	private void fireWireChanged(){
+		CircuitManager.getInstance().getWireManager().update();
 	}
 }
