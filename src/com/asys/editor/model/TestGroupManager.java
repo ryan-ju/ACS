@@ -59,7 +59,7 @@ public class TestGroupManager {
 				new Class[] { int.class });
 		setMaxIPs.setAccessible(true);
 		setMaxIPs.invoke(g9, new Object[] { new Integer(3) });
-		System.out.println("g9.getMaxIPs()==" + g9.getMaxIPs());
+		System.out.println("g9.getMaxIPs()==" + g9.getNumberOfIPs());
 		setMaxIPs.invoke(g10, new Object[] { new Integer(5) });
 		w1 = new Wire(i1.getOutport(0), g1.getInport(0), null);
 		w2 = new Wire(i2.getOutport(0), g1.getInport(1), null);
@@ -107,7 +107,7 @@ public class TestGroupManager {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		gm.deselectAll();
+		gm.clear();
 	}
 
 	@Test
@@ -117,7 +117,7 @@ public class TestGroupManager {
 		elts.add(g2);
 		elts.add(g3);
 		elts.add(g4);
-		gm.setSelection(elts);
+		gm.xorToGroup(elts);
 		List<Wire> wires = gm.getInducedWires();
 		assert wires.isEmpty();
 	}
@@ -126,7 +126,7 @@ public class TestGroupManager {
 	public void group2Test() {
 		ArrayList<Element> elts = new ArrayList<Element>();
 		elts.add(g9);
-		gm.setSelection(elts);
+		gm.xorToGroup(elts);
 		List<Wire> wires = gm.getInducedWires();
 		assert wires.isEmpty();
 	}
@@ -137,7 +137,7 @@ public class TestGroupManager {
 		elts.add(g6);
 		elts.add(g7);
 		elts.add(g10);
-		gm.setSelection(elts);
+		gm.xorToGroup(elts);
 		List<Wire> wires = gm.getInducedWires();
 		System.out.println("For group3, wires.size() = "+wires.size());
 		assert wires.size() == 3;
@@ -160,7 +160,7 @@ public class TestGroupManager {
 		elts.add(i12);
 		elts.add(i13);
 		elts.add(i14);
-		gm.setSelection(elts);
+		gm.xorToGroup(elts);
 		List<Wire> wires = gm.getInducedWires();
 		System.out.println("For group4, wires.size() = "+wires.size());
 		assert wires.contains(w14);

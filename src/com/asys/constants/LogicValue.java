@@ -14,6 +14,10 @@ public enum LogicValue {
 	public static LogicValue not(LogicValue l1) {
 		return null;
 	}
+	public static LogicValue not(List<LogicValue> ls) {
+		return null;
+	}
+	
 	public static LogicValue and(LogicValue l1, LogicValue l2) {
 		return null;
 	}

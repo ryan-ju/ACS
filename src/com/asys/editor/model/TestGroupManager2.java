@@ -20,7 +20,7 @@ public class TestGroupManager2 {
 	 * @throws java.lang.Exception
 	 */
 	public static void setUpBeforeClass() throws Exception {
-		gm = new GroupManager(null);
+		gm = SelectionManager.getInstance().getGroupManager();
 		i1 = new InputGate();
 		i1.setPosition(4, 2);
 		i2 = new InputGate();
@@ -68,15 +68,15 @@ public class TestGroupManager2 {
 		g8.setPosition(40, 15);
 		g9 = new AndGate();
 		g9.setPosition(40, 19);
-		g9.setMaxIPs(3);
+		g9.setNumberOfIPs(3);
 		g10 = new AndGate();
 		g10.setPosition(60, 10);
-		g10.setMaxIPs(5);
+		g10.setNumberOfIPs(5);
 		Method setMaxIPs = Element.class.getDeclaredMethod("setMaxIPs",
 				new Class[] { int.class });
 		setMaxIPs.setAccessible(true);
 		setMaxIPs.invoke(g9, new Object[] { new Integer(3) });
-		System.out.println("g9.getMaxIPs()==" + g9.getMaxIPs());
+		System.out.println("g9.getMaxIPs()==" + g9.getNumberOfIPs());
 		setMaxIPs.invoke(g10, new Object[] { new Integer(5) });
 		LinkedList<RoutingPoint> w1_rps = new LinkedList<RoutingPoint>();
 		w1 = new Wire(i1.getOutport(0), g1.getInport(0), w1_rps);
@@ -175,7 +175,7 @@ public class TestGroupManager2 {
 		elts.add(i12);
 		elts.add(i13);
 		elts.add(i14);
-		gm.setSelection(elts);
+		gm.xorToGroup(elts);
 		List<Wire> wires = gm.getInducedWires();
 		System.out.println("For group4, wires.size() = "+wires.size());
 		// Copy group 4

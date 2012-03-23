@@ -8,5 +8,5 @@ package com.asys.editor.model;
  *
  */
 public interface CircuitManagerListener {
-	public void update(CircuitManager cm);
+	public void update();
 }

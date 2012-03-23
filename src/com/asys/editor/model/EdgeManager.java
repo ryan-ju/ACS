@@ -12,7 +12,7 @@ public class EdgeManager {
 	private final HashMap<Integer, ArrayList<WireEdge>> h_edges, v_edges;
 	// private final HashMap<Integer, ArrayList<RoutingPoint>> h_ps, v_ps;
 	private final ArrayList<Edge> overlap;
-	private boolean hasChanged;
+	private boolean needToBuild, needToRenewOverlap;
 
 	public EdgeManager() {
 		h_edges = new HashMap<Integer, ArrayList<WireEdge>>();
@@ -20,7 +20,8 @@ public class EdgeManager {
 		// h_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
 		// v_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
 		overlap = new ArrayList<Edge>();
-		hasChanged = true;
+		needToBuild = true;
+		needToRenewOverlap = true;
 	}
 
 	public void init() {
@@ -32,12 +33,13 @@ public class EdgeManager {
 		h_edges.clear();
 		v_edges.clear();
 		for (Wire wire : wm.getWires()) {
-			addWire(wire);
+			subAddWire(wire);
 		}
-		hasChanged = false;
+		needToBuild = false;
+		needToRenewOverlap = true;
 	}
 
-	private void addWire(Wire wire) {
+	private void subAddWire(Wire wire) {
 		for (WireEdge edge : wire.getRoutingEdges()) {
 			if (edge.isVertical()) {
 				ArrayList<WireEdge> list = v_edges.get(edge.getP1().getX());
@@ -63,15 +65,16 @@ public class EdgeManager {
 	 *         Note the Edges are not RoutingEdges.
 	 */
 	public ArrayList<Edge> getOverlapping() {
-		if (hasChanged) {
+		if (needToRenewOverlap) {
 			overlap.clear();
 			build();
 			// Overlapping between Wires
 			for (ArrayList<WireEdge> list : v_edges.values()) {
 				for (int i = 0; i < list.size(); i++) {
 					for (int j = i + 1; j < list.size(); j++) {
-						Edge overlap_edge = WireEdge.getOverlap(list.get(i),
-								list.get(j));
+						WireEdge e1 = list.get(i);
+						WireEdge e2 = list.get(j);
+						Edge overlap_edge = WireEdge.getOverlap(e1, e2);
 						if (overlap_edge != null) {
 							overlap.add(overlap_edge);
 						}
@@ -82,8 +85,9 @@ public class EdgeManager {
 			for (ArrayList<WireEdge> list : h_edges.values()) {
 				for (int i = 0; i < list.size(); i++) {
 					for (int j = i + 1; j < list.size(); j++) {
-						Edge overlap_edge = WireEdge.getOverlap(list.get(i),
-								list.get(j));
+						WireEdge e1 = list.get(i);
+						WireEdge e2 = list.get(j);
+						Edge overlap_edge = WireEdge.getOverlap(e1, e2);
 						if (overlap_edge != null) {
 							overlap.add(overlap_edge);
 						}
@@ -118,41 +122,48 @@ public class EdgeManager {
 					}
 				}
 			}
+			needToRenewOverlap = false;
 		}
 		return overlap;
 	}
 
-	protected WireEdge getEdgeAt(int x, int y) {
-		if (hasChanged) {
+	public WireEdge getEdgeAt(int x, int y) {
+		if (needToBuild) {
 			build();
 		}
-		for (WireEdge edge : v_edges.get(x)) {
-			int min_y = Math.min(edge.getP1().getY(), edge.getP2().getY());
-			int max_y = Math.max(edge.getP1().getY(), edge.getP2().getY());
-			if (min_y <= y && y < max_y) {
-				return edge;
+		ArrayList<WireEdge> list = v_edges.get(x);
+		if (list != null) {
+			for (WireEdge edge : list) {
+				int min_y = Math.min(edge.getP1().getY(), edge.getP2().getY());
+				int max_y = Math.max(edge.getP1().getY(), edge.getP2().getY());
+				if (min_y <= y && y < max_y) {
+					return edge;
+				}
 			}
 		}
-		for (WireEdge edge : h_edges.get(y)) {
-			int min_x = Math.min(edge.getP1().getX(), edge.getP2().getX());
-			int max_x = Math.max(edge.getP1().getX(), edge.getP2().getX());
-			if (min_x <= y && y < max_x) {
-				return edge;
+		list = h_edges.get(y);
+		if (list != null) {
+			for (WireEdge edge : list) {
+				int min_x = Math.min(edge.getP1().getX(), edge.getP2().getX());
+				int max_x = Math.max(edge.getP1().getX(), edge.getP2().getX());
+				if (min_x <= x && x < max_x) {
+					return edge;
+				}
 			}
 		}
 		return null;
 	}
 
-	protected Wire getWireAt(int x, int y) {
-		WireEdge edge = getEdgeAt(x, y);
-		if (edge == null) {
-			return null;
-		} else {
-			return edge.getParent();
-		}
+	protected void update() {
+		needToBuild = true;
+		needToRenewOverlap = true;
 	}
 
-	protected void update() {
-		hasChanged = true;
+	protected void needToBuild() {
+		needToBuild = true;
+	}
+
+	protected void needToRenewOverlap() {
+		needToRenewOverlap = true;
 	}
 }

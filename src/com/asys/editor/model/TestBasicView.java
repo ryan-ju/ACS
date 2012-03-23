@@ -6,6 +6,8 @@ package com.asys.editor.model;
 import java.util.LinkedList;
 
 import com.asys.constants.Direction;
+import com.asys.model.components.exceptions.DuplicateElementException;
+import com.asys.model.components.exceptions.OverlappingElementException;
 import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
 import com.asys.views.BasicViewer;
 
@@ -51,14 +53,27 @@ public class TestBasicView {
 		w4rps.addLast(new RoutingPoint(46,26));
 		w4 = new Wire(a2.getOutport(0), a2.getInport(1), w4rps);
 		
-		w2.moveEdge(2, 0, -8);
+//		w2.moveEdge(2, 0, 1);
 //		w2.moveEdge(0, 0, -5);
-		w2.moveEdge(1, 21, 0);
+//		w2.moveEdge(1, 30, 0);
+//		w2.moveEdge(1, 21, 0);
 		
-		em.addElement(a1);
-		em.addElement(a2);
-		em.addElement(i1);
-		em.addElement(i2);
+		System.out.println("w3 add wire? "+w3.addRoutingPoints(2, 35, 23, 38, 25));
+		System.out.println("w4 add wire? "+w4.addRoutingPoints(2, 0, 4, 0, 25));
+		System.out.println("w4 add wire? "+w4.addRoutingPoints(8, 0, 15, 0, 25));
+		
+		try {
+			em.addElement(a1);
+			em.addElement(a2);
+			em.addElement(i1);
+			em.addElement(i2);
+		} catch (DuplicateElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (OverlappingElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		wm.addWire(w1);
 		wm.addWire(w2);

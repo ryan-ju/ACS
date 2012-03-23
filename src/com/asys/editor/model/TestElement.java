@@ -3,9 +3,6 @@
  */
 package com.asys.editor.model;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -54,8 +51,8 @@ public class TestElement {
 		Fanout fo = new Fanout();
 		AndGate and = new AndGate();
 		try {
-			fo.setMaxOPs(5);
-			assert fo.getMaxOPs() == 5;
+			fo.setNumberOfOPs(5);
+			assert fo.getNumberOfOPs() == 5;
 		} catch (MaxNumberOfPortsOutOfBoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -67,13 +64,13 @@ public class TestElement {
 			op3.setWire(new Wire(op3, and.getInport(0), null));
 			op4.setWire(new Wire(op4, and.getInport(1), null));
 			try {
-				fo.setMaxOPs(1);
+				fo.setNumberOfOPs(1);
 			} catch (MaxNumberOfPortsOutOfBoundException e) {
 				System.out
 						.println("Detected max number out of bound.  Current fo's # wired outports = "
 								+ fo.getNumWiredOPs());
 			}
-			fo.setMaxOPs(2);
+			fo.setNumberOfOPs(2);
 			Outport op0 = fo.getOutport(0);
 			Outport op1 = fo.getOutport(1);
 			assert op0.getWire() != null;
@@ -109,8 +106,8 @@ public class TestElement {
 		i8 = new InputGate();
 		f1 = new Fanout();
 		try {
-			a3.setMaxIPs(3);
-			a4.setMaxIPs(10);
+			a3.setNumberOfIPs(3);
+			a4.setNumberOfIPs(10);
 		} catch (MaxNumberOfPortsOutOfBoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -134,15 +131,15 @@ public class TestElement {
 		}
 		
 		try {
-			a3.setMaxIPs(5);
-			a3.setMaxIPs(3);
+			a3.setNumberOfIPs(5);
+			a3.setNumberOfIPs(3);
 		} catch (MaxNumberOfPortsOutOfBoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		try {
-			a4.setMaxIPs(3);
+			a4.setNumberOfIPs(3);
 		} catch (MaxNumberOfPortsOutOfBoundException e) {
 			System.out.println("Detected max # inports out of bound.  Current a4's # wire inports = "+a4.getNumWiredIPs());
 		}

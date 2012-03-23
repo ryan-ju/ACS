@@ -3,10 +3,7 @@
  */
 package com.asys.editor.model;
 
-import java.util.ArrayList;
-
 import com.asys.constants.Constant;
-import com.asys.constants.Direction;
 import com.asys.constants.LogicValue;
 
 /**
@@ -14,16 +11,22 @@ import com.asys.constants.LogicValue;
  *
  */
 public class AndGate extends Element {
+	LogicValue output = null;
 	
 	public AndGate(){
-		super(Constant.getDefaultProperty(), 2, 1, Constant.DEFAULT_GATE_WIDTH);
+		super(Constant.getDefaultProperty(), 2, 1, Constant.DEFAULT_GATE_WIDTH, true, false);
 	}
 
 	/* (non-Javadoc)
 	 * @see com.asys.editor.model.Element#evaluate()
 	 */
 	@Override
-	public LogicValue evaluate() {
+	public void evaluate() {
+		this.output = LogicValue.and(getInputs());
+	}
+	
+	@Override
+	public LogicValue getOutput() {
 		return LogicValue.and(getInputs());
 	}
 
@@ -41,5 +44,4 @@ public class AndGate extends Element {
 		Element.copy(this, and_cp);
 		return and_cp;
 	}
-
 }

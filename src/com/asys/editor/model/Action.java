@@ -8,6 +8,10 @@ package com.asys.editor.model;
  *
  */
 public interface Action {
-	public void run();
+	/**
+	 * 
+	 * @return true - if the action ran successfully.
+	 */
+	public boolean run();
 	public void undo();
 }

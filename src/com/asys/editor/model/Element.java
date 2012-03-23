@@ -4,12 +4,16 @@
 package com.asys.editor.model;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import com.asys.constants.Constant;
 import com.asys.constants.Direction;
+import com.asys.constants.ElementPropertyKey;
 import com.asys.constants.LogicValue;
+import com.asys.editor.model.Port.PortState;
+import com.asys.model.components.exceptions.InvalidPropertyException;
+import com.asys.model.components.exceptions.InvalidPropertyKeyException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
+import com.asys.model.components.exceptions.NoKeyException;
 import com.asys.model.components.exceptions.NoWireException;
 import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
 
@@ -18,25 +22,42 @@ import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
  * 
  */
 public abstract class Element {
-	protected int x, y, w, h;
+	protected int x, y, w, h, old_x, old_y, old_w, old_h;
 	private ArrayList<Inport> ips;
 	private ArrayList<Outport> ops;
 	private Property prop;
-	private int maxIPs, maxOPs;
+	private int numIPs, numOPs;
 	private Direction ort; // Direction of outports
+	private boolean canChangeNumIPs;
+	private boolean canChangeNumOPs;
 
 	protected Element() {
-		// Do nothing.
+		canChangeNumIPs = true;
+		canChangeNumOPs = true;
 	}
 
-	protected Element(Property prop, int maxIPs, int maxOPs, int w) {
+	protected Element(Property prop, int numIPs, int numOPs, int w,
+			boolean canChangeMaxIPs, boolean canChangeMaxOPs) {
 		ips = new ArrayList<Inport>();
 		ops = new ArrayList<Outport>();
 		this.ort = Direction.RIGHT;
 		this.prop = prop;
-		this.maxIPs = maxIPs;
-		this.maxOPs = maxOPs;
+		try {
+			prop.setProperty(ElementPropertyKey.NUM_INPORT, numIPs);
+			prop.setProperty(ElementPropertyKey.NUM_OUTPORT, numOPs);		
+		} catch (InvalidPropertyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.numIPs = numIPs;
+		this.numOPs = numOPs;
 		this.w = w;
+		this.old_w = w;
+		this.canChangeNumIPs = canChangeMaxIPs;
+		this.canChangeNumOPs = canChangeMaxOPs;
 		init();
 	}
 
@@ -44,64 +65,111 @@ public abstract class Element {
 		// Set initial position.
 		x = 0;
 		y = 0;
-		for (int i = 0; i < getMaxIPs(); i++) {
+		for (int i = 0; i < getNumberOfIPs(); i++) {
 			Inport ip = new Inport(this);
 			ips.add(ip);
 		}
-		for (int i = 0; i < getMaxOPs(); i++) {
+		for (int i = 0; i < getNumberOfOPs(); i++) {
 			Outport op = new Outport(this);
 			ops.add(op);
 		}
 		updateDimension();
 	}
 
-	protected void setup(int x, int y, int w, int h, int maxIPs, int maxOPs,
+	protected void setup(int x, int y, int w, int h, int numIPs, int numOPs,
 			Direction ort, ArrayList<Inport> ips, ArrayList<Outport> ops,
-			Property prop) {
+			Property prop, boolean canChangeMaxIPs, boolean canChangeMaxOPs) {
+		assert ips.size() <= numIPs && ops.size() <= numOPs;
+		try {
+			assert (Integer) prop.getProperty(ElementPropertyKey.NUM_INPORT) == numIPs && (Integer) prop.getProperty(ElementPropertyKey.NUM_OUTPORT) == numOPs;
+		} catch (InvalidPropertyKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		this.old_x = this.x;
 		this.x = x;
+		this.old_y = this.y;
 		this.y = y;
+		this.old_w = this.w;
 		this.w = w;
+		this.old_h = this.h;
 		this.h = h;
 		this.ips = ips;
 		this.ops = ops;
-		this.maxIPs = maxIPs;
-		this.maxOPs = maxOPs;
+		this.numIPs = numIPs;
+		this.numOPs = numOPs;
+		this.prop = prop;
 		this.ort = ort;
+		this.canChangeNumIPs = canChangeMaxIPs;
+		this.canChangeNumOPs = canChangeMaxOPs;
 	}
 
 	public int getX() {
 		return x;
 	}
 
+	public int getOldX() {
+		return old_x;
+	}
+
 	protected void setX(int x) {
+		this.old_x = this.x;
 		this.x = x;
-		updatePorts();
+		updatePositionOfPorts();
 	}
 
 	public int getY() {
 		return y;
 	}
 
+	public int getOldY() {
+		return old_y;
+	}
+
 	protected void setY(int y) {
+		this.old_y = this.y;
 		this.y = y;
-		updatePorts();
+		updatePositionOfPorts();
 	}
 
 	public Point getPosition() {
 		return new Point(x, y);
 	}
 
+	public Point getOldPosition() {
+		return new Point(old_x, old_y);
+	}
+
 	protected void setPosition(int x, int y) {
+		this.old_x = this.x;
+		this.old_y = this.y;
 		this.x = x;
 		this.y = y;
-		updatePorts();
+		updatePositionOfPorts();
 	}
 
 	public int getWidth() {
 		return w;
 	}
 
+	public int getIntrinsicWidth() {
+		switch (ort) {
+		case UP:
+		case DOWN:
+			return getHeight();
+		case LEFT:
+		case RIGHT:
+			return getWidth();
+		}
+		return -1;
+	}
+
+	public int getOldWidth() {
+		return old_w;
+	}
+
 	private void setWidth(int w) {
+		this.old_w = this.w;
 		this.w = w;
 	}
 
@@ -109,7 +177,24 @@ public abstract class Element {
 		return h;
 	}
 
+	public int getIntrinsicHeight() {
+		switch (ort) {
+		case UP:
+		case DOWN:
+			return getWidth();
+		case LEFT:
+		case RIGHT:
+			return getHeight();
+		}
+		return -1;
+	}
+
+	public int getOldHeight() {
+		return old_h;
+	}
+
 	private void setHeight(int h) {
+		this.old_h = this.h;
 		this.h = h;
 	}
 
@@ -120,15 +205,19 @@ public abstract class Element {
 	protected void setOrientation(Direction ort) {
 		if (Direction.isOrthogonal(this.ort, ort)) {
 			int t = h;
-			h = w;
-			w = t;
+			setHeight(w);
+			setWidth(t);
 		}
 		this.ort = ort;
-		updatePorts();
+		updatePositionOfPorts();
 	}
 
-	public int getMaxIPs() {
-		return maxIPs;
+	public boolean canChangeNumIPs() {
+		return canChangeNumIPs;
+	}
+
+	public int getNumberOfIPs() {
+		return numIPs;
 	}
 
 	public int getNumWiredIPs() {
@@ -141,31 +230,33 @@ public abstract class Element {
 		return i;
 	}
 
-	protected void setMaxIPs(int maxIPs)
+	protected void setNumberOfIPs(int numIPs)
 			throws MaxNumberOfPortsOutOfBoundException {
-		if (maxIPs > getMaxIPs()) { // Need to create more inports.
-			for (int i = getMaxIPs(); i < maxIPs; i++) {
-				Inport ip = new Inport(this);
-				ips.add(ip);
+		if (canChangeNumIPs) {
+			if (numIPs > getNumberOfIPs()) { // Need to create more inports.
+				for (int i = getNumberOfIPs(); i < numIPs; i++) {
+					Inport ip = new Inport(this);
+					ips.add(ip);
+				}
+				subSetNumberOfIPs(numIPs);
+				updateDimension();
 			}
-			this.maxIPs = maxIPs;
-			updateDimension();
-		}
-		// Delete some unwired inports.
-		if (maxIPs < getMaxIPs() && maxIPs >= getNumWiredIPs()) {
-			int i = 0, target = getMaxIPs() - maxIPs;
-			while (i < target) {
-				int j = getIndexOfNextUnwiredInport();
-				ips.remove(j);
-				i++;
+			// Delete some unwired inports.
+			if (numIPs < getNumberOfIPs() && numIPs >= getNumWiredIPs()) {
+				int i = 0, target = getNumberOfIPs() - numIPs;
+				while (i < target) {
+					int j = getIndexOfNextUnwiredInport();
+					ips.remove(j);
+					i++;
+				}
+				subSetNumberOfIPs(numIPs);
+				updateDimension();
 			}
-			this.maxIPs = maxIPs;
-			updateDimension();
+			if (numIPs < getNumWiredIPs()) {
+				throw new MaxNumberOfPortsOutOfBoundException(getNumWiredIPs());
+			}
+			assert getNumberOfIPs() == ips.size();
 		}
-		if (maxIPs < getNumWiredIPs()) {
-			throw new MaxNumberOfPortsOutOfBoundException(getNumWiredIPs());
-		}
-		assert getMaxIPs() == ips.size();
 	}
 
 	private int getIndexOfNextUnwiredInport() {
@@ -177,8 +268,12 @@ public abstract class Element {
 		return -1;
 	}
 
-	public int getMaxOPs() {
-		return maxOPs;
+	public boolean canChangeNumOPs() {
+		return canChangeNumOPs;
+	}
+
+	public int getNumberOfOPs() {
+		return numOPs;
 	}
 
 	public int getNumWiredOPs() {
@@ -191,31 +286,33 @@ public abstract class Element {
 		return i;
 	}
 
-	protected void setMaxOPs(int maxOPs)
+	protected void setNumberOfOPs(int numOPs)
 			throws MaxNumberOfPortsOutOfBoundException {
-		if (maxOPs > getMaxOPs()) { // Need to create more outports.
-			for (int i = getMaxOPs(); i < maxOPs; i++) {
-				Outport op = new Outport(this);
-				ops.add(op);
+		if (canChangeNumOPs) {
+			if (numOPs > getNumberOfOPs()) { // Need to create more outports.
+				for (int i = getNumberOfOPs(); i < numOPs; i++) {
+					Outport op = new Outport(this);
+					ops.add(op);
+				}
+				subSetNumberOfOPs(numOPs);
+				updateDimension();
 			}
-			this.maxOPs = maxOPs;
-			updateDimension();
-		}
-		// Delete some unwired outports.
-		if (maxOPs < getMaxOPs() && maxOPs >= getNumWiredOPs()) {
-			int i = 0, target = getMaxOPs() - maxOPs;
-			while (i < target) {
-				int j = getIndexOfNextUnwiredOutport();
-				ops.remove(j);
-				i++;
+			// Delete some unwired outports.
+			if (numOPs < getNumberOfOPs() && numOPs >= getNumWiredOPs()) {
+				int i = 0, target = getNumberOfOPs() - numOPs;
+				while (i < target) {
+					int j = getIndexOfNextUnwiredOutport();
+					ops.remove(j);
+					i++;
+				}
+				subSetNumberOfOPs(numOPs);
+				updateDimension();
 			}
-			this.maxOPs = maxOPs;
-			updateDimension();
+			if (numOPs < getNumWiredOPs()) {
+				throw new MaxNumberOfPortsOutOfBoundException(getNumWiredOPs());
+			}
+			assert getNumberOfOPs() == ops.size();
 		}
-		if (maxOPs < getNumWiredOPs()) {
-			throw new MaxNumberOfPortsOutOfBoundException(getNumWiredOPs());
-		}
-		assert getMaxOPs() == ops.size();
 	}
 
 	private int getIndexOfNextUnwiredOutport() {
@@ -237,46 +334,62 @@ public abstract class Element {
 	 */
 	public void setPositionOfInport(Inport ip) {
 		int i = ips.indexOf(ip);
-		int m = getMaxIPs();
+		int m = getNumberOfIPs();
 		int t;
 		int gap;
 		if (i >= 0) {
 			boolean firstHalf = 2 * i < m;
 			switch (ort) {
 			case UP:
-				t = w - 1;
-				gap = t - m;
-				if (firstHalf) {
-					ip.setPosition(new Point(x + 1 + i, y + h));
+				if (m == 1) {
+					ip.setPosition(new Point(x + w / 2, y + h));
 				} else {
-					ip.setPosition(new Point(x + 1 + gap + i, y + h));
+					t = w - 1;
+					gap = t - m;
+					if (firstHalf) {
+						ip.setPosition(new Point(x + 1 + i, y + h));
+					} else {
+						ip.setPosition(new Point(x + 1 + gap + i, y + h));
+					}
 				}
 				break;
 			case DOWN:
-				t = w - 1;
-				gap = t - m;
-				if (firstHalf) {
-					ip.setPosition(new Point(x + 1 + i, y));
+				if (m == 1) {
+					ip.setPosition(new Point(x + w / 2, y));
 				} else {
-					ip.setPosition(new Point(x + 1 + gap + i, y));
+					t = w - 1;
+					gap = t - m;
+					if (firstHalf) {
+						ip.setPosition(new Point(x + 1 + i, y));
+					} else {
+						ip.setPosition(new Point(x + 1 + gap + i, y));
+					}
 				}
 				break;
 			case LEFT:
-				t = h - 1;
-				gap = t - m;
-				if (firstHalf) {
-					ip.setPosition(new Point(x + w, y + 1 + i));
+				if (m == 1) {
+					ip.setPosition(new Point(x + w, y + h / 2));
 				} else {
-					ip.setPosition(new Point(x + w, y + 1 + gap + i));
+					t = h - 1;
+					gap = t - m;
+					if (firstHalf) {
+						ip.setPosition(new Point(x + w, y + 1 + i));
+					} else {
+						ip.setPosition(new Point(x + w, y + 1 + gap + i));
+					}
 				}
 				break;
 			case RIGHT:
-				t = h - 1;
-				gap = t - m;
-				if (firstHalf) {
-					ip.setPosition(new Point(x, y + 1 + i));
+				if (m == 1) {
+					ip.setPosition(new Point(x, y + h / 2));
 				} else {
-					ip.setPosition(new Point(x, y + 1 + gap + i));
+					t = h - 1;
+					gap = t - m;
+					if (firstHalf) {
+						ip.setPosition(new Point(x, y + 1 + i));
+					} else {
+						ip.setPosition(new Point(x, y + 1 + gap + i));
+					}
 				}
 				break;
 			default:
@@ -304,10 +417,14 @@ public abstract class Element {
 			default:
 				assert false;
 			}
+			// Wire wire = op.getWire();
+			// if (wire != null) {
+			// wire.adjustForOutport();
+			// }
 		}
 	}
 
-	protected void updatePorts() {
+	protected void updatePositionOfPorts() {
 		for (Inport ip : ips) {
 			setPositionOfInport(ip);
 		}
@@ -321,7 +438,7 @@ public abstract class Element {
 		switch (ort) {
 		case UP:
 		case DOWN:
-			max = Math.max(maxIPs, maxOPs);
+			max = Math.max(numIPs, numOPs);
 			if (max % 2 == 0) {
 				new_w = max + 2;
 			} else {
@@ -336,7 +453,7 @@ public abstract class Element {
 			break;
 		case LEFT:
 		case RIGHT:
-			max = Math.max(maxIPs, maxOPs);
+			max = Math.max(numIPs, numOPs);
 			if (max % 2 == 0) {
 				new_h = max + 2;
 			} else {
@@ -347,7 +464,7 @@ public abstract class Element {
 																	// ports can
 			break;
 		}
-		updatePorts();
+		updatePositionOfPorts();
 	}
 
 	public Property getProperty() {
@@ -363,20 +480,20 @@ public abstract class Element {
 	}
 
 	public Inport getInport(int i) throws PortNumberOutOfBoundException {
-		if (i >= maxIPs) {
-			throw new PortNumberOutOfBoundException(maxIPs);
+		if (i >= numIPs) {
+			throw new PortNumberOutOfBoundException(numIPs);
 		}
 		return ips.get(i);
 	}
 
 	public Outport getOutport(int i) throws PortNumberOutOfBoundException {
-		if (i >= maxOPs) {
-			throw new PortNumberOutOfBoundException(maxOPs);
+		if (i >= numOPs) {
+			throw new PortNumberOutOfBoundException(numOPs);
 		}
 		return ops.get(i);
 	}
 
-	protected List<Inport> getInports() {
+	public ArrayList<Inport> getInports() {
 		return ips;
 	}
 
@@ -384,7 +501,7 @@ public abstract class Element {
 		this.ips = ips;
 	}
 
-	protected List<Outport> getOutports() {
+	public ArrayList<Outport> getOutports() {
 		return ops;
 	}
 
@@ -392,7 +509,7 @@ public abstract class Element {
 		this.ops = ops;
 	}
 
-	List<LogicValue> getInputs() {
+	ArrayList<LogicValue> getInputs() {
 		ArrayList<LogicValue> inputs = new ArrayList<LogicValue>();
 		for (Inport ip : ips) {
 			try {
@@ -404,8 +521,51 @@ public abstract class Element {
 		return inputs;
 	}
 
+	public ElementPortState exportPortState() {
+		return new ElementPortState();
+	}
+
+	private void importPortState(ElementPortState state) {
+		this.setWidth(state.getWidth());
+		this.setHeight(state.getHeight());
+		this.prop = state.getProperty();
+		this.setInports(state.getInports());
+		this.setOutports(state.getOutports());
+		this.numIPs = state.getNumIPs();
+		this.numOPs = state.getNumOPs();
+		for (PortState s:state.portStates){
+			s.restore();
+		}
+	}
+	
+	private void subSetNumberOfIPs(int num){
+		this.numIPs = num;
+		try {
+			this.prop.setProperty(ElementPropertyKey.NUM_INPORT, num);
+		} catch (InvalidPropertyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void subSetNumberOfOPs(int num){
+		this.numOPs = num;
+		try {
+			this.prop.setProperty(ElementPropertyKey.NUM_OUTPORT, num);
+		} catch (InvalidPropertyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 	/**
-	 * This method copyies all the states of 'elt' to 'elt_cp'. Important: 'elt'
+	 * This method copies all the states of 'elt' to 'elt_cp'. Important: 'elt'
 	 * and 'elt_cp' must be of the same type.
 	 * 
 	 * This method is only used by the 'copy' method of Element's subclasses.
@@ -413,7 +573,7 @@ public abstract class Element {
 	 * Note that any port copied has no wires connected to it, since the
 	 * condition
 	 * "Any wire can only be connected to at most one Inport and at most one Outport"
-	 * must be maintained.  It is up to the user to add wires if desired.
+	 * must be maintained. It is up to the user to add wires if desired.
 	 * 
 	 * @param elt
 	 * @param elt_cp
@@ -429,13 +589,147 @@ public abstract class Element {
 			ops_cp.add(ops_cp.size(), new Outport(elt_cp));
 		}
 		prop_cp = elt.prop.copy();
-		elt_cp.setup(elt.x, elt.y, elt.w, elt.h, elt.maxIPs, elt.maxOPs,
-				elt.ort, ips_cp, ops_cp, prop_cp);
+		elt_cp.setup(elt.x, elt.y, elt.w, elt.h, elt.numIPs, elt.numOPs,
+				elt.ort, ips_cp, ops_cp, prop_cp, elt.canChangeNumIPs,
+				elt.canChangeNumOPs);
+	}
+
+	/**
+	 * This methods is used to calculate the expected bound of 'elt' if the
+	 * the number of inports/outports is set to 'num'.
+	 * 
+	 * The new dimension is calculated by the following rule:
+	 * 
+	 * 1. Only one dimension will be updated.
+	 * 
+	 * 2. The new dimension is the maximum calculated from the number of inports
+	 * and the number of outports, and the predefined minimum.
+	 * 
+	 * 3. The dimension will always be even. Both ends will have one excessive
+	 * unit, and the middle position will be occupied by a port if the number of
+	 * ports is odd, empty if even.
+	 * 
+	 * @param elt
+	 * @param num
+	 * @param isInport
+	 * @return
+	 */
+	protected static Rectangle getNewBound(Element elt, int num,
+			boolean isInport) {
+		if (elt != null) {
+			int max, new_w, new_h;
+			if (isInport) {
+				switch (elt.getOrientation()) {
+				case UP:
+				case DOWN:
+					if (isInport) {
+						max = Math.max(num, elt.getNumberOfOPs());
+					} else {
+						max = Math.max(elt.getNumberOfIPs(), num);
+					}
+					if (max % 2 == 0) {
+						new_w = max + 2;
+					} else {
+						new_w = max + 1;
+					}
+
+					return new Rectangle(elt.getX(), elt.getY(), Math.max(
+							new_w, Constant.MIN_GATE_HEIGHT), elt.getHeight());
+				case LEFT:
+				case RIGHT:
+					if (isInport) {
+						max = Math.max(num, elt.getNumberOfOPs());
+					} else {
+						max = Math.max(elt.getNumberOfIPs(), num);
+					}
+					if (max % 2 == 0) {
+						new_h = max + 2;
+					} else {
+						new_h = max + 1;
+					}
+					return new Rectangle(elt.getX(), elt.getY(),
+							elt.getWidth(), Math.max(new_h,
+									Constant.MIN_GATE_HEIGHT));
+				}
+			}
+		}
+		return null;
 	}
 
 	abstract public Element copy();
 
-	abstract public LogicValue evaluate();
+	/**
+	 * This method evaluates the new output.
+	 */
+	abstract public void evaluate();
+
+	/**
+	 * This method returns the current output. Output is updated only when
+	 * evaluate() is called.
+	 * 
+	 * @return
+	 */
+	abstract public LogicValue getOutput();
 
 	abstract public void accept(ElementVisitor ev);
+
+	class ElementPortState {
+		private int w, h;
+		private int maxIPs, maxOPs;
+		private Property prop;
+		private ArrayList<Inport> ips;
+		private ArrayList<Outport> ops;
+		private ArrayList<PortState> portStates;
+
+		ElementPortState() {
+			this.maxIPs = Element.this.numIPs;
+			this.maxOPs = Element.this.numOPs;
+			this.w = Element.this.w;
+			this.h = Element.this.h;
+			this.prop = Element.this.prop.copy();
+			ips = new ArrayList<Inport>();
+			ops = new ArrayList<Outport>();
+			portStates = new ArrayList<PortState>();
+			ips.addAll(Element.this.ips);
+			ops.addAll(Element.this.ops);
+			for (Port port : ips) {
+				portStates.add(port.exportState());
+			}
+			for (Port port : ops) {
+				portStates.add(port.exportState());
+			}
+		}
+
+		public int getWidth() {
+			return w;
+		}
+
+		public int getHeight() {
+			return h;
+		}
+		
+		public Property getProperty(){
+			return prop;
+		}
+
+		public int getNumIPs() {
+			return maxIPs;
+		}
+
+		public int getNumOPs() {
+			return maxOPs;
+		}
+
+		public ArrayList<Inport> getInports() {
+			return ips;
+		}
+
+		public ArrayList<Outport> getOutports() {
+			return ops;
+		}
+
+		public void restore() {
+			Element.this.importPortState(this);
+		}
+	}
 }

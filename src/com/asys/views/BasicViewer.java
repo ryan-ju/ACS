@@ -34,6 +34,8 @@ import com.asys.editor.model.EdgeManager;
 import com.asys.editor.model.Element;
 import com.asys.editor.model.GroupManager;
 import com.asys.editor.model.Point;
+import com.asys.editor.model.RoutingPoint;
+import com.asys.editor.model.SelectionManager;
 import com.asys.editor.model.Wire;
 import com.asys.editor.model.WireEdge;
 
@@ -47,6 +49,7 @@ public class BasicViewer extends JFrame {
 	List<Wire> wires;
 	int m = Constant.GRID_SIZE;
 	float r = Constant.HIGHLIGT_RADIUS;
+	float t = Constant.HIGHLIGHT_TRANSPARANCY;
 	JLayeredPane layers;
 
 	public BasicViewer(CircuitManager cm) {
@@ -54,9 +57,12 @@ public class BasicViewer extends JFrame {
 		elts = cm.getElementManager().getElements();
 		wires = cm.getWireManager().getWires();
 		init();
-		HighlightPanel highlightPanel = new HighlightPanel();
-		highlightPanel.setSize(2000, 2000);
-		layers.add(highlightPanel, new Integer(101));
+		ErrorHighlightPanel errorHighlightPanel = new ErrorHighlightPanel();
+		errorHighlightPanel.setSize(2000, 2000);
+		SelectionHighlightPanel selectionHighlightPanel = new SelectionHighlightPanel();
+		selectionHighlightPanel.setSize(2000, 2000);
+		layers.add(errorHighlightPanel, new Integer(102));
+		layers.add(selectionHighlightPanel, new Integer(101));
 	}
 
 	public BasicViewer(GroupManager gm) {
@@ -96,11 +102,16 @@ public class BasicViewer extends JFrame {
 	}
 
 	class GridPanel extends JPanel {
+		
+		public GridPanel(){
+			this.setBackground(Constant.BACKGROUND_CLR);
+		}
+		
 		@Override
 		public void paintComponent(Graphics g) {
 			super.paintComponent(g);
 			Graphics2D g2d = (Graphics2D) g;
-			g.setColor(Color.LIGHT_GRAY);
+			g.setColor(Constant.GRID_CLR);
 			int i = 0, max_x = this.getWidth() / m, max_y = this.getHeight()
 					/ m;
 			while (i <= max_x) {
@@ -125,7 +136,7 @@ public class BasicViewer extends JFrame {
 			super.paintComponent(g);
 			Graphics2D g2d = (Graphics2D) g;
 			for (Element elt : elts) {
-				g2d.setColor(Color.BLACK);
+				g2d.setColor(Constant.ELEMENT_BORDER_CLR);
 				int x, y, w, h;
 				x = elt.getX();
 				y = elt.getY();
@@ -133,24 +144,24 @@ public class BasicViewer extends JFrame {
 				h = elt.getHeight();
 				g2d.drawRect(x * m, y * m, w * m, h * m);
 				Point p = new Point(x + w / 2, y + h / 2);
-				g2d.setColor(Color.PINK);
+				g2d.setColor(Color.BLUE);
 				paintArrow(g2d, p, elt.getOrientation(), 2, 2);
 			}
-			g2d.setColor(Color.BLACK);
+			g2d.setColor(Constant.WIRE_CLR);
 			for (Wire wire : wires) {
 				for (WireEdge e : wire.getRoutingEdges()) {
 					g2d.drawLine(e.getP1().getX() * m, e.getP1().getY() * m, e
 							.getP2().getX() * m, e.getP2().getY() * m);
-					paintArrow(g2d, e.getP1(), e.getDirection(), 2, 1);
+					paintArrow(g2d, e.getP1(), e.getDirection(), 1f, 1f);
 				}
 			}
 		}
 
-		private void paintArrow(Graphics2D g, Point p, Direction dir, int base,
-				int height) {
+		private void paintArrow(Graphics2D g, Point p, Direction dir,
+				float base, float height) {
 			int[] xs, ys;
-			int b = base / 2, h = height;
-			int x1, x2, x3, y1, y2, y3, x_temp, b_temp, y_temp;
+			float b = base / 2, h = height;
+			float x1, x2, x3, y1, y2, y3, x_temp, b_temp, y_temp;
 			switch (dir) {
 			case UP:
 				x_temp = p.getX() * m;
@@ -162,8 +173,8 @@ public class BasicViewer extends JFrame {
 				y1 = y_temp;
 				y2 = y_temp;
 				y3 = y_temp - h * m;
-				xs = new int[] { x1, x2, x3 };
-				ys = new int[] { y1, y2, y3 };
+				xs = new int[] { Math.round(x1), Math.round(x2), Math.round(x3) };
+				ys = new int[] { Math.round(y1), Math.round(y2), Math.round(y3) };
 				g.fillPolygon(xs, ys, 3);
 				break;
 			case DOWN:
@@ -176,8 +187,8 @@ public class BasicViewer extends JFrame {
 				y1 = y_temp;
 				y2 = y_temp;
 				y3 = y_temp + h * m;
-				xs = new int[] { x1, x2, x3 };
-				ys = new int[] { y1, y2, y3 };
+				xs = new int[] { Math.round(x1), Math.round(x2), Math.round(x3) };
+				ys = new int[] { Math.round(y1), Math.round(y2), Math.round(y3) };
 				g.fillPolygon(xs, ys, 3);
 				break;
 			case LEFT:
@@ -190,8 +201,8 @@ public class BasicViewer extends JFrame {
 				y1 = y_temp - b_temp;
 				y2 = y_temp + b_temp;
 				y3 = y_temp;
-				xs = new int[] { x1, x2, x3 };
-				ys = new int[] { y1, y2, y3 };
+				xs = new int[] { Math.round(x1), Math.round(x2), Math.round(x3) };
+				ys = new int[] { Math.round(y1), Math.round(y2), Math.round(y3) };
 				g.fillPolygon(xs, ys, 3);
 				break;
 			case RIGHT:
@@ -204,18 +215,62 @@ public class BasicViewer extends JFrame {
 				y1 = y_temp - b_temp;
 				y2 = y_temp + b_temp;
 				y3 = y_temp;
-				xs = new int[] { x1, x2, x3 };
-				ys = new int[] { y1, y2, y3 };
+				xs = new int[] { Math.round(x1), Math.round(x2), Math.round(x3) };
+				ys = new int[] { Math.round(y1), Math.round(y2), Math.round(y3) };
 				g.fillPolygon(xs, ys, 3);
 				break;
 			}
 		}
 	}
 
-	class HighlightPanel extends JPanel {
+	class SelectionHighlightPanel extends JPanel {
+		SelectionManager sm;
+
+		SelectionHighlightPanel() {
+			this.setOpaque(false);
+			sm = SelectionManager.getInstance();
+		}
+
+		@Override
+		public void paintComponent(Graphics g) {
+			super.paintComponent(g);
+			Graphics2D g2d = (Graphics2D) g;
+			
+			Composite oldComp = g2d.getComposite();
+			Composite alphaComp = AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, t);
+			g2d.setComposite(alphaComp);
+			
+			Paint p_old = g2d.getPaint();
+			
+			Wire wire = sm.getSelectedWire();
+			if (wire!=null){
+				paintWire(g, wire, Constant.WIRE_HIGHLIGHT_CLR, r);
+			}
+			
+			WireEdge edge = sm.getSelectedWireEdge();
+			if (edge!=null){
+				paintWire(g, edge.getParent(), Constant.WIRE_EDGE_HIGHLIGHT_CLR, r);
+				paintWireEdge(g, edge, new Color(0, 10, 0), r);
+			}
+			
+			for (Element elt:sm.getGroupManager().getElements()){
+				paintElement(g, elt, Constant.ELEMENT_HIGHLIGHT_CLR, r);
+			}
+			for (Wire ind_wire:sm.getGroupManager().getInducedWires()){
+				paintWire(g, ind_wire, Constant.WIRE_HIGHLIGHT_CLR, r);
+			}
+			
+			g2d.setPaint(p_old);
+			g2d.setComposite(oldComp);
+		}
+
+	}
+
+	class ErrorHighlightPanel extends JPanel {
 		EdgeManager em;
 
-		HighlightPanel() {
+		ErrorHighlightPanel() {
 			em = cm.getEdgeManager();
 			this.setOpaque(false);
 		}
@@ -227,21 +282,21 @@ public class BasicViewer extends JFrame {
 
 			Composite oldComp = g2d.getComposite();
 			Composite alphaComp = AlphaComposite.getInstance(
-					AlphaComposite.SRC_OVER, 0.5f);
+					AlphaComposite.SRC_OVER, t);
 			g2d.setComposite(alphaComp);
 
 			Paint p_old = g2d.getPaint();
 
 			RadialGradientPaint radial_paint;
 			LinearGradientPaint lp;
-			Color[] c = { Color.RED, new Color(255, 0, 0, 0) };
+			Color[] c = { Constant.ERROR_CLR, new Color(255, 0, 0, 0) };
 			float[] dist = { 0f, 1f };
 
 			ArrayList<Edge> overlap = em.getOverlapping();
 			for (Edge edge : overlap) {
 				Point p1 = edge.getP1();
 				Point p2 = edge.getP2();
-				if (Point.overlap(p1, p2)) {
+				if (Point.overlap(p1, p2)) { // So we paint a point
 					int x = p1.getX() * m;
 					int y = p1.getY() * m;
 					radial_paint = new RadialGradientPaint((float) x,
@@ -249,15 +304,11 @@ public class BasicViewer extends JFrame {
 					g2d.setPaint(radial_paint);
 					g2d.fillOval(Math.round(x - r), Math.round(y - r),
 							Math.round(2 * r), Math.round(2 * r));
-				} else {
+				} else { // We paint a line
 					int x1 = p1.getX() * m;
 					int y1 = p1.getY() * m;
 					int x2 = p2.getX() * m;
 					int y2 = p2.getY() * m;
-					int min_x = Math.min(x1, x2);
-					int max_x = Math.max(x1, x2);
-					int min_y = Math.min(y1, y2);
-					int max_y = Math.max(y1, y2);
 					int x = x2 - x1;
 					int y = y2 - y1;
 					float mod = (float) Math.sqrt(x * x + y * y);
@@ -267,19 +318,133 @@ public class BasicViewer extends JFrame {
 							((float) x1) - ny, ((float) y1) + nx, dist, c,
 							MultipleGradientPaint.CycleMethod.REFLECT);
 					g2d.setPaint(lp);
-					int[] xpoints = {Math.round(x1-ny),Math.round(x2-ny), Math.round(x2+ny), Math.round(x1+ny)};
-					int[] ypoints = {Math.round(y1+nx), Math.round(y2+nx), Math.round(y2-nx), Math.round(y1-nx)};
+					int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
+							Math.round(x2 + ny), Math.round(x1 + ny) };
+					int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
+							Math.round(y2 - nx), Math.round(y1 - nx) };
 					Polygon poly = new Polygon(xpoints, ypoints, 4);
-//					g2d.fillRoundRect(Math.round(min_x - r),
-//							Math.round(min_y - r),
-//							Math.round(max_x - min_x + 2 * r),
-//							Math.round(max_y - min_y + 2 * r), (int) r, (int) r);
 					g2d.fill(poly);
 				}
 			}
 
 			g2d.setPaint(p_old);
 			g2d.setComposite(oldComp);
+		}
+	}
+	
+	void paintWireEdge(Graphics g, WireEdge edge, Color color, float rad){
+		Graphics2D g2d = (Graphics2D) g;
+		
+		LinearGradientPaint lp;
+		float[] dist = { 0f, 1f };
+		Color[] c = { color, new Color(255, 255, 255, 0) };
+		
+		RoutingPoint p1 = edge.getP1();
+		RoutingPoint p2 = edge.getP2();
+
+		int x1 = p1.getX() * m;
+		int y1 = p1.getY() * m;
+		int x2 = p2.getX() * m;
+		int y2 = p2.getY() * m;
+		int x = x2 - x1;
+		int y = y2 - y1;
+		float mod = (float) Math.sqrt(x * x + y * y);
+		float nx = ((float) x) / mod * rad;
+		float ny = ((float) y) / mod * rad;
+		lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1)
+				- ny, ((float) y1) + nx, dist, c,
+				MultipleGradientPaint.CycleMethod.REFLECT);
+		g2d.setPaint(lp);
+		int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
+				Math.round(x2 + ny), Math.round(x1 + ny) };
+		int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
+				Math.round(y2 - nx), Math.round(y1 - nx) };
+		Polygon poly = new Polygon(xpoints, ypoints, 4);
+		g2d.fill(poly);
+		
+	}
+
+	void paintWire(Graphics g, Wire wire, Color color, float rad) {
+		Graphics2D g2d = (Graphics2D) g;
+		LinearGradientPaint lp;
+		float[] dist = { 0f, 1f };
+		Color[] c = { color, new Color(255, 255, 255, 0) };
+		for (WireEdge edge : wire.getRoutingEdges()) {
+			RoutingPoint p1 = edge.getP1();
+			RoutingPoint p2 = edge.getP2();
+
+			int x1 = p1.getX() * m;
+			int y1 = p1.getY() * m;
+			int x2 = p2.getX() * m;
+			int y2 = p2.getY() * m;
+			int x = x2 - x1;
+			int y = y2 - y1;
+			float mod = (float) Math.sqrt(x * x + y * y);
+			float nx = ((float) x) / mod * rad;
+			float ny = ((float) y) / mod * rad;
+			lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1)
+					- ny, ((float) y1) + nx, dist, c,
+					MultipleGradientPaint.CycleMethod.REFLECT);
+			g2d.setPaint(lp);
+			int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
+					Math.round(x2 + ny), Math.round(x1 + ny) };
+			int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
+					Math.round(y2 - nx), Math.round(y1 - nx) };
+			Polygon poly = new Polygon(xpoints, ypoints, 4);
+			g2d.fill(poly);
+		}
+	}
+
+	void paintElement(Graphics g, Element elt, Color color, float rad) {
+		Graphics2D g2d = (Graphics2D) g;
+
+		RadialGradientPaint radial_paint;
+		LinearGradientPaint lp;
+		Color[] c = { color, new Color(255, 255, 255, 0) };
+		float[] dist = { 0f, 1f };
+
+		if (elt.getHeight() <= 0 && elt.getWidth() <= 0) {
+			Point p = elt.getPosition();
+			int x = p.getX() * m;
+			int y = p.getY() * m;
+			radial_paint = new RadialGradientPaint((float) x, (float) y, rad,
+					dist, c);
+			g2d.setPaint(radial_paint);
+			g2d.fillOval(Math.round(x - rad), Math.round(y - rad),
+					Math.round(2 * rad), Math.round(2 * rad));
+		} else {
+			ArrayList<Point> points = new ArrayList<Point>();
+			points.add(new Point(elt.getX()+elt.getWidth(), elt.getY()));
+			points.add(new Point(elt.getX()+elt.getWidth(), elt.getY()+elt.getHeight()));
+			points.add(new Point(elt.getX(), elt.getY()+elt.getHeight()));
+			points.add(new Point(elt.getX(), elt.getY()));
+			
+			Point p1 = new Point(elt.getX(), elt.getY());
+			Point p2;
+			for (Point point:points){
+				p2 = point;
+				int x1 = p1.getX() * m;
+				int y1 = p1.getY() * m;
+				int x2 = p2.getX() * m;
+				int y2 = p2.getY() * m;
+				int x = x2 - x1;
+				int y = y2 - y1;
+				float mod = (float) Math.sqrt(x * x + y * y);
+				float nx = 2*((float) x) / mod * rad;
+				float ny = 2*((float) y) / mod * rad;
+				lp = new LinearGradientPaint((float) x1, (float) y1,
+						((float) x1) - ny, ((float) y1) + nx, dist, c,
+						MultipleGradientPaint.CycleMethod.NO_CYCLE);
+				g2d.setPaint(lp);
+				int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
+						x2, x1 };
+				int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
+						y2, y1 };
+				Polygon poly = new Polygon(xpoints, ypoints, 4);
+				g2d.fill(poly);
+				
+				p1 = p2;
+			}
 		}
 	}
 }

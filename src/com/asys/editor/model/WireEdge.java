@@ -4,6 +4,7 @@
 package com.asys.editor.model;
 
 import com.asys.constants.Direction;
+import com.asys.model.components.exceptions.InvalidRoutingPointException;
 
 /**
  * The edge is vertical or horizontal.
@@ -13,22 +14,34 @@ import com.asys.constants.Direction;
  */
 public class WireEdge extends Edge {
 	private final Wire parent;
+	private final int index;
 
-	public WireEdge(RoutingPoint p1, RoutingPoint p2, Wire parent) {
+	public WireEdge(RoutingPoint p1, RoutingPoint p2, Wire parent, int index)
+			throws InvalidRoutingPointException {
 		super(p1, p2);
 		// assert p1.getX() == p2.getX() || p1.getY() == p2.getY();
 		try {
 			if (!(p1.getX() == p2.getX() || p1.getY() == p2.getY())) {
-				throw new Exception();
+				throw new InvalidRoutingPointException(p1, p2);
 			}
-		} catch (Exception e) {
-			System.out.println("Assertion violated!");
+		} catch (InvalidRoutingPointException e) {
+			RoutingPoint rp1 = e.getRoutingPoints()[0];
+			RoutingPoint rp2 = e.getRoutingPoints()[1];
+			System.out.println("Invalid RoutingPoints! rp1 = (" + rp1.getX()
+					+ ", " + rp1.getY() + ")  rp2 = (" + rp2.getX() + ", "
+					+ rp2.getY() + ")");
+//			throw e;
 		}
 		this.parent = parent;
+		this.index = index;
 	}
 
 	public Wire getParent() {
 		return parent;
+	}
+
+	public int getIndex() {
+		return index;
 	}
 
 	public boolean isVertical() {
@@ -57,53 +70,69 @@ public class WireEdge extends Edge {
 
 	@Override
 	/**
-	 * Can only move orthogonally.
+	 * Can only move orthogonally.  This method should only be called by the Wire containing the WireEdge.  Calling this method directly will result in data corruption.
 	 * 
 	 * @param dx
 	 * @param dy
 	 */
 	protected void move(int dx, int dy) {
-		if (isVertical()) {
-			p1.move(dx, 0);
-			p2.move(dx, 0);
+		if (isZero()) {
+			assert dx == 0 || dy == 0;
+			p1.move(dx, dy);
+			p2.move(dx, dy);
 		} else {
-			p1.move(0, dy);
-			p2.move(0, dy);
+			if (isVertical()) {
+				p1.move(dx, 0);
+				p2.move(dx, 0);
+			} else {
+				p1.move(0, dy);
+				p2.move(0, dy);
+			}
 		}
 	}
-	
-	public static Edge getOverlap(WireEdge edge, Element elt){
+
+	public WireEdge copy() {
+		WireEdge edge_cp = null;
+		try {
+			edge_cp = new WireEdge(new RoutingPoint(getP1()), new RoutingPoint(
+					getP2()), null, -1);
+		} catch (InvalidRoutingPointException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return edge_cp;
+	}
+
+	public static Edge getOverlap(WireEdge edge, Element elt) {
 		RoutingPoint rp1 = edge.getP1();
 		RoutingPoint rp2 = edge.getP2();
-		if (edge.isVertical()){
+		if (edge.isVertical()) {
 			int x = edge.getP1().getX();
-			if (elt.getX() < x && x< elt.getX()+elt.getWidth()){
+			if (elt.getX() < x && x < elt.getX() + elt.getWidth()) {
 				int edge_min_y = Math.min(rp1.getY(), rp2.getY());
 				int edge_max_y = Math.max(rp1.getY(), rp2.getY());
 				int elt_min_y = elt.getY();
-				int elt_max_y = elt_min_y+elt.getHeight();
+				int elt_max_y = elt_min_y + elt.getHeight();
 				// This is the condition for overlapping.
 				if (edge_min_y < elt_max_y && elt_min_y < edge_max_y) {
 					int max_min_y = Math.max(edge_min_y, elt_min_y);
 					int min_max_y = Math.min(edge_max_y, elt_max_y);
-					return new Edge(
-							new RoutingPoint(x, min_max_y),
+					return new Edge(new RoutingPoint(x, min_max_y),
 							new RoutingPoint(x, max_min_y));
 				}
 			}
-		}else{
+		} else {
 			int y = edge.getP1().getY();
-			if (elt.getY()<y && y<elt.getY()+elt.getHeight()){
+			if (elt.getY() < y && y < elt.getY() + elt.getHeight()) {
 				int edge_min_x = Math.min(rp1.getX(), rp2.getX());
 				int edge_max_x = Math.max(rp1.getX(), rp2.getX());
 				int elt_min_x = elt.getX();
-				int elt_max_x = elt_min_x+elt.getWidth();
+				int elt_max_x = elt_min_x + elt.getWidth();
 				// This is the condition for overlapping.
 				if (edge_min_x < elt_max_x && elt_min_x < edge_max_x) {
 					int max_min_x = Math.max(edge_min_x, elt_min_x);
 					int min_max_x = Math.min(edge_max_x, elt_max_x);
-					return new Edge(
-							new RoutingPoint(min_max_x, y),
+					return new Edge(new RoutingPoint(min_max_x, y),
 							new RoutingPoint(max_min_x, y));
 				}
 			}
@@ -166,7 +195,7 @@ public class WireEdge extends Edge {
 
 	}
 
-	private static boolean isOnWireEdge(RoutingPoint p, WireEdge edge) {
+	public static boolean isOnWireEdge(Point p, WireEdge edge) {
 		RoutingPoint p1 = edge.getP1();
 		RoutingPoint p2 = edge.getP2();
 		int min_x = Math.min(p1.getX(), p2.getX());
@@ -181,4 +210,5 @@ public class WireEdge extends Edge {
 					&& p.getX() <= max_x;
 		}
 	}
+
 }

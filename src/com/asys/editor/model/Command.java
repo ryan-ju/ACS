@@ -13,7 +13,8 @@ import com.asys.constants.CommandName;
  * CREATE_GATE		x: int - the x-coordinate of the new element
  * 					y: int - the y-coordinate of the new element
  * 
- * CREATE_FANOUT	edge: WireEdge
+ * CREATE_FANOUT	wire: Wire
+ * 					index: int
  * 					x: int
  * 					y: int
  * 
@@ -21,7 +22,8 @@ import com.asys.constants.CommandName;
  * 					ip: Inport
  * 					rps: LinkedList<RoutingPoint>
  * 
- * CREATE_WIRE_EDGE	edge: WireEdge
+ * CREATE_WIRE_EDGE	wire: Wire
+ * 					index: int
  * 					x1: int
  * 					y1: int
  * 					x2: int
@@ -32,13 +34,29 @@ import com.asys.constants.CommandName;
  * MOVE				dx: int - the x displacement
  * 					dy: int - the y displacement
  * 
- * POINT_SELECT		x: int
- * 					y: int
+ * CHANGE_NUMBER_OF_INPORT:		numIPs: int
+ * 								
+ * CHANGE_NUMBER_OF_OUTPORT:	numOPs: int
+ * 								
+ * ROTATE			isClockWise: boolean - if the rotation is clockwise 
  * 
- * RANGE_SELECT		x: int
- * 					y: int
- * 					w: int
- * 					h: int
+ * SELECT_WIRE		wire: Wire - the Wire to be selected
+ * 
+ * SELECT_WIRE_EDGE	edge: WireEdge - the WireEdge to be selected
+ * 
+ * SELECT_ELEMENT	elt: Element - the Element to be selected
+ * 
+ * SELECT_MULTI_ELEMENT	elt: Element - the Element to be taken xor with the selected Elements
+ * 
+ * SELECT_GROUP_ELEMENT	elts: List<Element> - the list of Elements to be selected.  Previous selection will be deselected.
+ * 
+ * SELECT_GROUP_MULTI_ELEMENT	elts: List<Element> - the list of elements to be added to the selection.
+ * 
+ * DESELECT_ELEMENT	elt: Element - the Element to be deselected
+ * 
+ * SELECT_GROUP_ELEMENT	elts: ArrayList<Element> - the Elements to be selected
+ * 
+ * DESELECT			
  * 
  * UNDO				
  * 
@@ -46,7 +64,8 @@ import com.asys.constants.CommandName;
  * 
  * COPY
  * 
- * PASTE
+ * PASTE				x: int - the x-coordinate to be pasted at
+ * 						y: int - the y-coordinate to be pasted at
  *
  */
 public class Command {
@@ -54,7 +73,7 @@ public class Command {
 	private CommandName name;
 	private Object[] params;
 	
-	public Command getInstance(){
+	public static Command getInstance(){
 		if (CMD == null){
 			CMD = new Command();
 		}

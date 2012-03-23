@@ -6,7 +6,9 @@ package com.asys.editor.model;
 import java.util.LinkedList;
 
 import com.asys.constants.Direction;
+import com.asys.model.components.exceptions.DuplicateElementException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
+import com.asys.model.components.exceptions.OverlappingElementException;
 import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
 import com.asys.views.BasicViewer;
 
@@ -32,7 +34,7 @@ public class TestBasicView2 {
 		a2 = new AndGate();
 		a2.setPosition(43, 13);
 		a2.setOrientation(Direction.UP);
-		a2.setMaxIPs(3);
+		a2.setNumberOfIPs(3);
 		a3 = new AndGate();
 		a3.setPosition(47, 28);
 		a3.setOrientation(Direction.LEFT);
@@ -90,13 +92,21 @@ public class TestBasicView2 {
 		w8.moveEdge(2, 2, 0);
 		w8.moveEdge(1, 0, -5);
 
-		em.addElement(a1);
-		em.addElement(a2);
-		em.addElement(a3);
-		em.addElement(i1);
-		em.addElement(i2);
-		em.addElement(i3);
-		em.addElement(f1);
+		try {
+			em.addElement(a1);
+			em.addElement(a2);
+			em.addElement(a3);
+			em.addElement(i1);
+			em.addElement(i2);
+			em.addElement(i3);
+			em.addElement(f1);
+		} catch (DuplicateElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (OverlappingElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		wm.addWire(w1);
 		wm.addWire(w2);

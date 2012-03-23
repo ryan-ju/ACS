@@ -10,6 +10,17 @@ package com.asys.editor.model;
 public class Rectangle {
 	private int x, y, w, h;
 
+	public Rectangle() {
+
+	}
+
+	public Rectangle(int x, int y, int w, int h) {
+		this.x = x;
+		this.y = y;
+		this.w = w;
+		this.h = h;
+	}
+
 	public int getX() {
 		return x;
 	}

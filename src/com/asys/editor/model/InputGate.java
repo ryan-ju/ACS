@@ -11,18 +11,23 @@ import com.asys.constants.LogicValue;
  *
  */
 public class InputGate extends Element {
-
+	LogicValue output = null;
+	
 	public InputGate() {
-		super(Constant.getDefaultProperty(), 0, 1, 4);
+		super(Constant.getDefaultProperty(), 0, 1, 4, false, false);
 	}
 
 	/* (non-Javadoc)
 	 * @see com.asys.editor.model.Element#evaluate()
 	 */
 	@Override
-	public LogicValue evaluate() {
+	public void evaluate() {
 		// TODO Auto-generated method stub
-		return null;
+	}
+	
+	@Override
+	public LogicValue getOutput(){
+		return output;
 	}
 
 	/* (non-Javadoc)

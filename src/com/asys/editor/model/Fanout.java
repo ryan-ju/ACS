@@ -11,16 +11,17 @@ import com.asys.constants.LogicValue;
  * 
  */
 public class Fanout extends Element {
-
+	LogicValue output = null;
+	
 	public Fanout() {
-		super(Constant.getDefaultProperty(), 1, 2, 0);
+		super(Constant.getDefaultProperty(), 1, 2, 0, false, true);
 	}
 
 	@Override
 	protected void updateDimension(){
 		h = 0;
 		w = 0;
-		super.updatePorts();
+		super.updatePositionOfPorts();
 	}
 	
 	@Override
@@ -45,9 +46,13 @@ public class Fanout extends Element {
 	 * @see com.asys.editor.model.Element#evaluate()
 	 */
 	@Override
-	public LogicValue evaluate() {
-		// TODO
-		return null;
+	public void evaluate() {
+		this.output = this.getInputs().get(0);
+	}
+	
+	@Override
+	public LogicValue getOutput(){
+		return output;
 	}
 
 	/*

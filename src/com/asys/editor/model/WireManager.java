@@ -57,11 +57,17 @@ public class WireManager {
 	 * @param y
 	 * @return
 	 */
-	protected Wire getWireAt(int x, int y){
-		return edgm.getWireAt(x, y);
+	public Wire getWireAt(int x, int y) {
+		WireEdge edge = edgm.getEdgeAt(x, y);
+		if (edge == null) {
+			return null;
+		} else {
+			return edge.getParent();
+		}
 	}
 	
 	protected void update(){
-		cm.setWireManagerChanged();
+//		cm.setWireManagerChanged();
+		edgm.update();
 	}
 }

@@ -4,8 +4,10 @@
 package com.asys.editor.model;
 
 import java.util.LinkedList;
+import java.util.List;
 
 import com.asys.constants.Direction;
+import com.asys.model.components.exceptions.InvalidRoutingPointException;
 
 /**
  * @author ryan
@@ -18,11 +20,11 @@ public class Wire {
 	private LinkedList<RoutingPoint> rps; // Excluding the start and end points.
 	private LinkedList<WireEdge> res;
 	private boolean hasChanged;
-	
-	private Wire(){
+
+	private Wire() {
 		// Do nothing.
 	}
-	
+
 	public Wire(Outport op, Inport ip, LinkedList<RoutingPoint> rps) {
 		this.ip = ip;
 		inrp_old = new RoutingPoint(ip.getPosition());
@@ -31,7 +33,8 @@ public class Wire {
 		outrp_old = new RoutingPoint(op.getPosition());
 		op.setWire(this);
 		this.rps = rps;
-		unsetHasChanged();
+		purgeRoutingPoints();
+		setHasChanged();
 	}
 
 	public Inport getInport() {
@@ -46,7 +49,7 @@ public class Wire {
 	 */
 	protected void setInport(Inport ip) {
 		this.ip = ip;
-		setHasChanged();
+//		setHasChanged();
 	}
 
 	public Outport getOutport() {
@@ -61,7 +64,7 @@ public class Wire {
 	 */
 	protected void setOutport(Outport op) {
 		this.op = op;
-		setHasChanged();
+//		setHasChanged();
 	}
 
 	/**
@@ -80,8 +83,10 @@ public class Wire {
 			rps.addLast(new RoutingPoint(getInport().getPosition()));
 		}
 	}
-	
+
 	/**
+	 * Adds a pair of routing points to the wire edge with index 'index'. The
+	 * newly created wire edge will be shifted orthogonally by 1 unit.
 	 * 
 	 * @param index
 	 * @param x1
@@ -106,14 +111,20 @@ public class Wire {
 				assert edge.getP1().getY() != edge.getP2().getY();
 				if (edge.getDirection() == Direction.DOWN) { // 'edge' points
 																// downwards
-					rps.add(index + 1, new RoutingPoint(min_ex, max_y));
-					rps.add(index + 1, new RoutingPoint(min_ex, min_y));
+					rps.add(index, new RoutingPoint(min_ex, max_y));
+					rps.add(index, new RoutingPoint(min_ex, max_y));
+					rps.add(index, new RoutingPoint(min_ex, min_y));
+					rps.add(index, new RoutingPoint(min_ex, min_y));
 				} else { // 'edge' points upwards
 					assert edge.getDirection() == Direction.UP;
-					rps.add(index + 1, new RoutingPoint(min_ex, min_y));
-					rps.add(index + 1, new RoutingPoint(min_ex, max_y));
+					rps.add(index, new RoutingPoint(min_ex, min_y));
+					rps.add(index, new RoutingPoint(min_ex, min_y));
+					rps.add(index, new RoutingPoint(min_ex, max_y));
+					rps.add(index, new RoutingPoint(min_ex, max_y));
 				}
 				setHasChanged();
+				moveEdge(index + 2, 1, 0);
+//				fireWireChanged();
 				return true;
 			}
 		} else {
@@ -125,14 +136,20 @@ public class Wire {
 				assert edge.getP1().getX() != edge.getP2().getX();
 				if (edge.getDirection() == Direction.RIGHT) { // 'edge' points
 																// right
-					rps.add(index + 1, new RoutingPoint(max_x, min_ey));
-					rps.add(index + 1, new RoutingPoint(min_x, min_ey));
+					rps.add(index, new RoutingPoint(max_x, min_ey));
+					rps.add(index, new RoutingPoint(max_x, min_ey));
+					rps.add(index, new RoutingPoint(min_x, min_ey));
+					rps.add(index, new RoutingPoint(min_x, min_ey));
 				} else { // 'edge' points left
 					assert edge.getDirection() == Direction.LEFT;
-					rps.add(index + 1, new RoutingPoint(min_x, min_ey));
-					rps.add(index + 1, new RoutingPoint(max_x, min_ey));
+					rps.add(index, new RoutingPoint(min_x, min_ey));
+					rps.add(index, new RoutingPoint(min_x, min_ey));
+					rps.add(index, new RoutingPoint(max_x, min_ey));
+					rps.add(index, new RoutingPoint(max_x, min_ey));
 				}
 				setHasChanged();
+				moveEdge(index + 2, 0, 1);
+//				fireWireChanged();
 				return true;
 			}
 		}
@@ -149,18 +166,50 @@ public class Wire {
 
 	public LinkedList<WireEdge> getRoutingEdges() {
 		if (hasChanged || res == null) {
-			res = new LinkedList<WireEdge>();
-			// RoutingPoint rpp = op.getPosition();
-			RoutingPoint rpp = outrp_old;
-			for (RoutingPoint rp : rps) {
-				res.addLast(new WireEdge(rpp, rp, this));
-				rpp = rp;
+			try {
+				res = new LinkedList<WireEdge>();
+				int i = 0;
+				// RoutingPoint rpp = op.getPosition();
+				RoutingPoint rpp = outrp_old;
+				for (RoutingPoint rp : rps) {
+					res.addLast(new WireEdge(rpp, rp, this, i));
+					rpp = rp;
+					i++;
+				}
+				// res.add(new WireEdge(rpp, ip.getPosition()));
+				res.add(new WireEdge(rpp, inrp_old, this, i));
+				unsetHasChanged();
+			} catch (InvalidRoutingPointException e) {
+				e.printStackTrace();
 			}
-			// res.add(new WireEdge(rpp, ip.getPosition()));
-			res.add(new WireEdge(rpp, inrp_old, this));
-			unsetHasChanged();
 		}
 		return res;
+	}
+
+	public boolean isOn(int x, int y) {
+		for (WireEdge edge : getRoutingEdges()) {
+			if (WireEdge.isOnWireEdge(new Point(x, y), edge)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * 
+	 * @param x
+	 * @param y
+	 * @return -1 - (x, y) is not on the Wire.
+	 */
+	public int getWireEdgeIndexAt(int x, int y) {
+		int i = 0;
+		for (WireEdge edge : getRoutingEdges()) {
+			if (WireEdge.isOnWireEdge(new Point(x, y), edge)) {
+				return i;
+			}
+			i++;
+		}
+		return -1;
 	}
 
 	/**
@@ -175,11 +224,19 @@ public class Wire {
 		}
 		inrp_old.move(dx, dy);
 		outrp_old.move(dx, dy);
-		fireWireChanged();
+//		fireWireChanged();
 	}
 
-	protected void moveEdge(int index, int dx, int dy) {
+	/**
+	 * 
+	 * @param index
+	 * @param dx
+	 * @param dy
+	 * @return true - if wire edges were added or removed.
+	 */
+	protected boolean moveEdge(int index, int dx, int dy) {
 		assert index >= 0 && index < getRoutingEdges().size();
+		boolean f = false;
 		WireEdge edge = getRoutingEdges().get(index);
 		int size = getRoutingEdges().size();
 		// If 'edge' is the first edge
@@ -187,6 +244,7 @@ public class Wire {
 			addRoutingPointAtEnd(true);
 			setHasChanged();
 			edge = getRoutingEdges().get(1);
+			f = true;
 		}
 		// If 'edge' is the last edge
 		if (index == size - 1) {
@@ -203,6 +261,7 @@ public class Wire {
 																		// first
 																		// if
 																		// block!
+			f = true;
 		}
 		RoutingPoint rpa = edge.getP1();
 		RoutingPoint rpb = edge.getP2();
@@ -213,17 +272,34 @@ public class Wire {
 			rpa.setY(rpa.getY() + dy);
 			rpb.setY(rpb.getY() + dy);
 		}
-		purgeRoutingPoints();
-		fireWireChanged();
+		f = purgeRoutingPoints() ? true : f;
+		setHasChanged();
+		return f;
 	}
 
-	private void purgeRoutingPoints() {
+	/**
+	 * 
+	 * @return true - if any routing points have been deleted.
+	 */
+	private boolean purgeRoutingPoints() {
+		boolean hasDeleted = false;
+		while (purgeRoutingPointsSub()) {
+			hasDeleted = true;
+		}
+		return hasDeleted;
+	}
+
+	/*
+	 * Returns true if there are points deleted.
+	 */
+	private boolean purgeRoutingPointsSub() {
+		boolean hasDeleted = false;
 		if (rps.size() > 0) { /*
 							 * Only purge if there are routing points between
 							 * the Inport and the Outport.
 							 */
 			LinkedList<RoutingPoint> delete = new LinkedList<RoutingPoint>();
-			RoutingPoint rp1 = op.getPosition(), rp2 = rps.get(0), rp3;
+			RoutingPoint rp1 = outrp_old, rp2 = rps.get(0), rp3;
 			int i = 1;
 			while (i < rps.size()) {
 				rp3 = rps.get(i);
@@ -236,14 +312,16 @@ public class Wire {
 				rp2 = rp3;
 				i++;
 			}
-			rp3 = ip.getPosition();
+			rp3 = inrp_old;
 			if ((rp1.getX() == rp2.getX() && rp2.getX() == rp3.getX())
 					|| (rp1.getY() == rp2.getY() && rp2.getY() == rp3.getY())) {
 				delete.add(rp2);
 			}
+			hasDeleted = !delete.isEmpty();
 			rps.removeAll(delete);
 			setHasChanged();
 		}
+		return hasDeleted;
 	}
 
 	protected void adjustForInport() {
@@ -254,15 +332,28 @@ public class Wire {
 			rps.add(new RoutingPoint(rp));
 			rps.add(new RoutingPoint(rp));
 		}
-		WireEdge edge = getRoutingEdges().getLast();
+		WireEdge edge = null;
+		try {
+			edge = new WireEdge(rps.getLast(), inrp_old, this, rps.size());
+		} catch (InvalidRoutingPointException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		assert edge != null;
 		boolean edge_is_vertical;
+		// If 'edge' has zero length, then it is due to the two overlapping
+		// routing points being added to the empty 'rps'
 		if (edge.isZero()) {
-			WireEdge edge_adj = getRoutingEdges().get(0);
-			if (edge_adj.isZero() || !edge_adj.isVertical()) {
-				edge_is_vertical = true;
-			} else {
-				edge_is_vertical = false;
+			assert rps.size() == 2;
+			WireEdge edge_first = null;
+			try {
+				edge_first = new WireEdge(outrp_old, rps.getFirst(), this, 0);
+			} catch (InvalidRoutingPointException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			assert edge_first != null;
+			edge_is_vertical = edge_first.isVertical();
 		} else {
 			edge_is_vertical = edge.isVertical();
 		}
@@ -275,7 +366,7 @@ public class Wire {
 		}
 		inrp_old = new RoutingPoint(ip.getPosition());
 		purgeRoutingPoints();
-		fireWireChanged();
+//		fireWireChanged();
 	}
 
 	protected void adjustForOutport() {
@@ -286,15 +377,29 @@ public class Wire {
 			rps.add(new RoutingPoint(rp));
 			rps.add(new RoutingPoint(rp));
 		}
-		WireEdge edge = getRoutingEdges().getFirst();
+		WireEdge edge = null;
+		try {
+			edge = new WireEdge(outrp_old, rps.getFirst(), this, 0);
+		} catch (InvalidRoutingPointException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		assert edge != null;
 		boolean edge_is_vertical;
+		// If 'edge' has zero length, then it is due to the two overlapping
+		// routing points being added to the empty 'rps'
 		if (edge.isZero()) {
-			WireEdge edge_adj = getRoutingEdges().get(1);
-			if (edge_adj.isZero() || !edge_adj.isVertical()) {
-				edge_is_vertical = true;
-			} else {
-				edge_is_vertical = false;
+			assert rps.size() == 2;
+			WireEdge edge_last = null;
+			try {
+				edge_last = new WireEdge(rps.getLast(), inrp_old, this,
+						rps.size());
+			} catch (InvalidRoutingPointException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
+			assert edge_last != null;
+			edge_is_vertical = edge_last.isVertical();
 		} else {
 			edge_is_vertical = edge.isVertical();
 		}
@@ -307,27 +412,27 @@ public class Wire {
 		}
 		outrp_old = new RoutingPoint(op.getPosition());
 		purgeRoutingPoints();
-		fireWireChanged();
+//		fireWireChanged();
 	}
 
 	private void setHasChanged() {
 		this.hasChanged = true;
-		fireWireChanged();
+//		fireWireChanged();
 	}
 
 	private void unsetHasChanged() {
 		this.hasChanged = false;
 	}
-	
+
 	/**
 	 * The copied wire's Inport and Outport are null.
 	 * 
 	 * @return
 	 */
-	public Wire copy(){
+	public Wire copy() {
 		Wire wire_cp = new Wire();
 		LinkedList<RoutingPoint> rps_cp = new LinkedList<RoutingPoint>();
-		for (RoutingPoint rp:rps){
+		for (RoutingPoint rp : rps) {
 			rps_cp.add(new RoutingPoint(rp));
 		}
 		wire_cp.rps = rps_cp;
@@ -336,8 +441,73 @@ public class Wire {
 		wire_cp.hasChanged = true;
 		return wire_cp;
 	}
-	
-	private void fireWireChanged(){
-		CircuitManager.getInstance().getWireManager().update();
+
+	public WireState exportState() {
+		WireState state = new WireState();
+		state.setIp(ip);
+		state.setOp(op);
+		state.setRps(rps);
+		return state;
+	}
+
+	private void importState(WireState state) {
+		state.getIp().setWire(this);
+		state.getOp().setWire(this);
+		inrp_old = new RoutingPoint(state.getIp().getPosition());
+		outrp_old = new RoutingPoint(state.getOp().getPosition());
+		this.setRoutingPoints(state.getRps());
+	}
+
+//	private void fireWireChanged() {
+//		CircuitManager.getInstance().getWireManager().update();
+//		CircuitManager.getInstance().getEdgeManager().update();
+//		CircuitManager.getInstance().fireStateChangedEvent();
+//	}
+
+	public static void validateWireEdges(Outport op, Inport ip,
+			List<RoutingPoint> rps) throws InvalidRoutingPointException {
+		RoutingPoint rpp = op.getPosition();
+		for (RoutingPoint rp : rps) {
+			new WireEdge(rpp, rp, null, -1);
+			rpp = rp;
+		}
+		new WireEdge(rpp, ip.getPosition(), null, -1);
+	}
+
+	class WireState {
+		private Inport ip;
+		private Outport op;
+		private LinkedList<RoutingPoint> rps = new LinkedList<RoutingPoint>();
+
+		public Inport getIp() {
+			return this.ip;
+		}
+
+		public void setIp(Inport ip) {
+			this.ip = ip;
+		}
+
+		public Outport getOp() {
+			return this.op;
+		}
+
+		public void setOp(Outport op) {
+			this.op = op;
+		}
+
+		public LinkedList<RoutingPoint> getRps() {
+			return (LinkedList<RoutingPoint>) this.rps.clone();
+		}
+
+		public void setRps(LinkedList<RoutingPoint> rps) {
+			rps = new LinkedList<RoutingPoint>();
+			for (RoutingPoint rp : Wire.this.rps) {
+				this.rps.addLast(new RoutingPoint(rp));
+			}
+		}
+
+		public void restore() {
+			Wire.this.importState(this);
+		}
 	}
 }

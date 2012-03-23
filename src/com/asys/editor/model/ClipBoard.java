@@ -14,10 +14,12 @@ public class ClipBoard{
 	private static ClipBoard cb;
 	private ArrayList<Element> elts;
 	private ArrayList<Wire> wires;
+	private boolean isEmpty;
 	
 	private ClipBoard(){
 		elts = new ArrayList<Element>();
 		wires = new ArrayList<Wire>();
+		isEmpty = true;
 	}
 	
 	public static ClipBoard getInstance(){
@@ -31,6 +33,7 @@ public class ClipBoard{
 	
 	protected void setElements(ArrayList<Element> elts){
 		this.elts = elts;
+		isEmpty = false;
 	}
 	
 	public List<Wire> getWires(){
@@ -44,5 +47,14 @@ public class ClipBoard{
 	public void clear(){
 		this.elts.clear();
 		this.wires.clear();
+		isEmpty = true;
+	}
+	
+	public boolean isEmpty(){
+		return isEmpty;
+	}
+	
+	public CircuitContainer getNewCircuit(){
+		return CircuitUtilities.copyCircuit(elts);
 	}
 }
