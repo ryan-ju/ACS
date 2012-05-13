@@ -420,8 +420,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			public void mouseMoved(MouseEvent e) {
 				if (coordinateConvert(e.getX(), e.getY())) {
 					System.out.println("Mouse moved! x = " + x + ", y = " + y);
-					wcm.setX(x);
-					wcm.setY(y);
+					wcm.setBoth(x, y);
 					System.out.println("wcm x = " + wcm.getX() + ", y = "
 							+ wcm.getY());
 				}
@@ -431,8 +430,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			public void mouseClicked(MouseEvent e) {
 				coordinateConvert(e.getX(), e.getY());
 				if (e.getButton() == MouseEvent.BUTTON1) {
-					wcm.setX(x);
-					wcm.setY(y);
+					wcm.setBoth(x, y);
 					wcm.addRoutingPoint();
 				} else if (e.getButton() == MouseEvent.BUTTON3) {
 					wcm.removeLastRoutingPoint();
@@ -1321,8 +1319,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			for (Inport ip : elt.getInports()) {
 				x1_ip = ip.getPosition().getX() * m;
 				y1_ip = ip.getPosition().getY() * m;
-				x2_ip = x1_ip + dx * w / 2;
-				y2_ip = y1_ip + dy * h / 2;
+				x2_ip = x1_ip + dx * w / 3;
+				y2_ip = y1_ip + dy * h / 3;
 				g2d.drawLine(x1_ip, y1_ip, x2_ip, y2_ip);
 				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip
 						- Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE,
@@ -1333,8 +1331,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			for (Outport op : elt.getOutports()) {
 				x1_ip = op.getPosition().getX() * m;
 				y1_ip = op.getPosition().getY() * m;
-				x2_ip = x1_ip + dx * w / 2;
-				y2_ip = y1_ip + dy * h / 2;
+				x2_ip = x1_ip + dx * w / 3;
+				y2_ip = y1_ip + dy * h / 3;
 				g2d.drawLine(x1_ip, y1_ip, x2_ip, y2_ip);
 				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip
 						- Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE,

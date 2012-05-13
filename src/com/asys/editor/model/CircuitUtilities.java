@@ -93,6 +93,36 @@ public class CircuitUtilities {
 		}
 		return ind_wires;
 	}
+	
+	/**
+	 * Returns a list of the (Inport, Wire, Outport, Elemnet) tuples.
+	 * 
+	 * @param elt
+	 * @return ArrayList<Object[]>. Each element in the array list represents a
+	 *         tuple, which is represented as an Object[] instance of type
+	 *         {Inport(of the wire), Wire, Outport(of the wire), Element(the
+	 *         neighbour)}.
+	 *         
+	 * @param elt
+	 * @return
+	 */
+	public static LinkedList<Object[]> children(Element elt){
+		LinkedList<Element> ns = new LinkedList<Element>();
+		LinkedList<Object[]> nss = new LinkedList<Object[]>();
+		List<Outport> ops = elt.getOutports();
+		for (Outport op : ops) {
+			Wire wire = op.getWire();
+			if (op.getWire() != null) {// Make sure the port has a wire
+										// connected to.
+				assert wire.getOutport() != null;
+				Inport ip_nb = wire.getInport();
+				Element nb = ip_nb.getParent();
+				ns.add(nb);
+				nss.add(new Object[] { ip_nb, wire, wire.getOutport(), nb });
+			}
+		}
+		return nss;
+	}
 
 	/**
 	 * Returns a list of the (Inport, Wire, Outport, Elemnet) tuples.

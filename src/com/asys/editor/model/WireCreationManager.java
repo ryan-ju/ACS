@@ -74,7 +74,7 @@ public class WireCreationManager {
 		return x;
 	}
 
-	public void setX(int x) {
+	private void setX(int x) {
 		if (vertical) {
 			// Do nothing
 		} else {
@@ -93,7 +93,7 @@ public class WireCreationManager {
 		return y;
 	}
 
-	public void setY(int y) {
+	private void setY(int y) {
 		if (vertical) {
 			this.y = y;
 			Inport ip_t = cm.getElementManager().getInportAt(this.x, this.y);
@@ -106,6 +106,30 @@ public class WireCreationManager {
 		} else {
 			// Do nothing
 		}
+	}
+
+	public void setBoth(int x, int y) {
+		// If there are not routing points
+		if (rps.isEmpty()) {
+			int x0 = this.getOutport().getPosition().getX();
+			int y0 = this.getOutport().getPosition().getY();
+			// The user wants to create a horizontal edge
+			if (Math.abs(x - x0) >= Math.abs(y - y0)) {
+				this.vertical = false;
+				this.setX(x);
+				// Reset y
+				this.y = y0;
+			} else {
+				this.vertical = true;
+				this.setY(y);
+				// Reset x
+				this.x = x0;
+			}
+		} else {
+			this.setX(x);
+			this.setY(y);
+		}
+		fireCoordinatesChanged();
 	}
 
 	public void removeLastRoutingPoint() {
@@ -155,8 +179,8 @@ public class WireCreationManager {
 		creating = false;
 		Command cmd = Command.getInstance();
 		cmd.setCommandName(CommandName.CREATE_WIRE);
-		cmd.setParams(new Object[] { getOutport(),
-				getInport(), getRoutingPoints() });
+		cmd.setParams(new Object[] { getOutport(), getInport(),
+				getRoutingPoints() });
 		Executor.getInstance().execute(cmd);
 		clear();
 		fireFinishedCreation();

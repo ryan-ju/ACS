@@ -270,9 +270,18 @@ public class PropertyViewer extends JScrollPane {
 			 */
 			private String convert(long time) {
 				String time_str = Long.toString(time);
-				String int_part = time_str.substring(0, time_str.length() - 3);
-				String dec_part = time_str.substring(time_str.length() - 3);
-				return int_part + "." + dec_part+"ns";
+				if (time_str.length() > 3) {
+					String int_part = time_str.substring(0,
+							time_str.length() - 3);
+					String dec_part = time_str.substring(time_str.length() - 3);
+					return int_part + "." + dec_part + "ns";
+				} else {
+					String full_time_str = "00" + time_str;
+					return "0."
+							+ full_time_str
+									.substring(full_time_str.length() - 3)
+							+ "ns";
+				}
 			}
 
 		}

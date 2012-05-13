@@ -10,6 +10,9 @@ import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
@@ -74,13 +77,49 @@ public class Application extends JFrame implements ErrorNotifier {
 		main_split_pl.setLeftComponent(left_split_pl);
 		main_split_pl.setRightComponent(canvas);
 
+		// Add the components to the content panel of this Application
 		content.add(main_split_pl, BorderLayout.CENTER);
 		content.add(error_tf, BorderLayout.SOUTH);
 
+		// Add menu bar
+		this.setJMenuBar(createMenuBar());
+		
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
 		this.mm.addListener(canvas);
 		mm.setMode(Mode.EDIT_MODE);
+	}
+	
+	private JMenuBar createMenuBar(){
+		// Create a menu bar
+		JMenuBar menuBar = new JMenuBar();
+		// Create "File" menu
+		JMenu fileMenu = new JMenu("File");
+		menuBar.add(fileMenu);
+		JMenuItem menuItem = new JMenuItem("New circuit");
+		fileMenu.add(menuItem);
+		menuItem = new JMenuItem("Save circuit");
+		fileMenu.add(menuItem);
+		menuItem = new JMenuItem("Save circuit as...");
+		fileMenu.add(menuItem);
+		fileMenu.addSeparator();
+		menuItem = new JMenuItem("Exit");
+		fileMenu.add(menuItem);
+		
+		// Create "Canvas" menu
+		JMenu canvasMenu = new JMenu("Canvas");
+		menuBar.add(canvasMenu);
+		menuItem = new JMenuItem("Expand vertically");
+		canvasMenu.add(menuItem);
+		menuItem = new JMenuItem("Expand horizontally");
+		canvasMenu.add(menuItem);
+		menuItem = new JMenuItem("Expand in both directions");
+		canvasMenu.add(menuItem);
+		canvasMenu.addSeparator();
+		menuItem = new JMenuItem("Pack canvas");
+		canvasMenu.add(menuItem);
+		
+		return menuBar;
 	}
 
 	private void setupTest() {
@@ -144,6 +183,11 @@ public class Application extends JFrame implements ErrorNotifier {
 			}
 			
 		};
+	}
+	
+	// Action Manager
+	class ActionManager{
+		
 	}
 
 	// ====================================================

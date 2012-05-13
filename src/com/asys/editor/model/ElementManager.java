@@ -490,10 +490,10 @@ public class ElementManager {
 			}
 			if (h <= 1) {
 				boolean b1 = true, b2 = true;
-				if (overlappingSub(y, x, w, true)) {
-					b1 = overlappingSub(y + 1, x, w, true);
-					if (w == 0)
-						b2 = overlappingSub(y - 1, x, w, true);
+				if (overlappingSub(y, x, w, false)) {
+					b1 = overlappingSub(y + 1, x, w, false);
+					if (h == 0)
+						b2 = overlappingSub(y - 1, x, w, false);
 					if (b1 && b2)
 						return true;
 				}

@@ -11,6 +11,14 @@ import java.util.List;
 public enum LogicValue {
 	ZERO, ONE, X;
 	
+	@Override
+	public String toString(){
+		if (this.equals(ZERO)) return "0";
+		else if (this.equals(ONE)) return "1";
+		else if (this.equals(X)) return "X";
+		else return "";
+	}
+	
 	public static LogicValue not(LogicValue l1) {
 		return null;
 	}
