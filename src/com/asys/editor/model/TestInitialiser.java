@@ -4,11 +4,9 @@
 package com.asys.editor.model;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
-import com.asys.constants.CommandName;
 import com.asys.constants.Direction;
 import com.asys.model.components.exceptions.DuplicateElementException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
@@ -21,7 +19,7 @@ import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
  */
 public class TestInitialiser {
 	public static void initialise() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException, SecurityException, IllegalArgumentException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-		mixed_gates();
+		simple_gates_small();
 		
 	}
 	
@@ -29,8 +27,6 @@ public class TestInitialiser {
 		CircuitManager cm = CircuitManager.getInstance();
 		WireManager wm = cm.getWireManager();
 		ElementManager em = cm.getElementManager();
-		SelectionManager sm = SelectionManager.getInstance();
-		GroupManager gm = sm.getGroupManager();
 		
 		AndGate g1, g6, g7, g8, g9, g10;
 		XorGate g5;
@@ -221,8 +217,6 @@ public class TestInitialiser {
 		all_elts.add(g9);
 		all_elts.add(g10);
 		all_elts.add(i1);
-		all_elts.add(i1);
-		all_elts.add(i1);
 		all_elts.add(e2);
 		all_elts.add(i3);
 		all_elts.add(e4);
@@ -369,6 +363,97 @@ public class TestInitialiser {
 			e.printStackTrace();
 		}
 
+		wm.addWire(w1);
+		wm.addWire(w2);
+		wm.addWire(w3);
+		wm.addWire(w4);
+		wm.addWire(w5);
+		wm.addWire(w6);
+		wm.addWire(w7);
+		wm.addWire(w8);
+	}
+	
+	private static void simple_gates_small() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
+		CircuitManager cm = CircuitManager.getInstance();
+		WireManager wm = cm.getWireManager();
+		ElementManager em = cm.getElementManager();
+
+		AndGate a1;
+		OrGate o1;
+		XorGate x1;
+		NandGate na1;
+		InputGate i1, i2, i3;
+		Wire w1, w2, w3, w4, w5, w6, w7, w8;
+		Fanout f1;
+
+		a1 = new AndGate();
+		a1.setPosition(6, 15);
+		o1 = new OrGate();
+		o1.setPosition(43, 13);
+		o1.setOrientation(Direction.UP);
+		o1.setNumberOfIPs(3);
+		x1 = new XorGate();
+		x1.setPosition(47, 28);
+		x1.setOrientation(Direction.LEFT);
+		na1 = new NandGate();
+		na1.setPosition(55, 20);
+		i1 = new InputGate();
+		i1.setPosition(0, 14);
+		i2 = new InputGate();
+		i2.setPosition(15, 28);
+		i3 = new InputGate();
+		i3.setPosition(60, 28);
+		i3.setOrientation(Direction.LEFT);
+		f1 = new Fanout();
+		f1.setPosition(56, 30);
+		w1 = new Wire(i1.getOutport(0), a1.getInport(0),
+				new LinkedList<RoutingPoint>());
+		LinkedList<RoutingPoint> w2rps = new LinkedList<RoutingPoint>();
+		w2rps.addLast(new RoutingPoint(23, 30));
+		w2rps.addLast(new RoutingPoint(23, 25));
+		w2rps.addLast(new RoutingPoint(3, 25));
+		w2rps.addLast(new RoutingPoint(3, 18));
+		w2 = new Wire(i2.getOutport(0), a1.getInport(1), w2rps);
+		LinkedList<RoutingPoint> w3rps = new LinkedList<RoutingPoint>();
+		w3rps.addLast(new RoutingPoint(33, 17));
+		w3rps.addLast(new RoutingPoint(33, 25));
+		w3rps.addLast(new RoutingPoint(44, 25));
+		w3 = new Wire(a1.getOutport(0), o1.getInport(0), w3rps);
+		LinkedList<RoutingPoint> w4rps = new LinkedList<RoutingPoint>();
+		w4rps.addLast(new RoutingPoint(45, 3));
+		w4rps.addLast(new RoutingPoint(50, 3));
+		w4rps.addLast(new RoutingPoint(50, 26));
+		w4rps.addLast(new RoutingPoint(46, 26));
+		w4 = new Wire(o1.getOutport(0), o1.getInport(2), w4rps);
+		LinkedList<RoutingPoint> w5rps = new LinkedList<RoutingPoint>();
+		w5rps.addLast(new RoutingPoint(45, 30));
+		w5 = new Wire(x1.getOutport(0), o1.getInport(1), w5rps);
+		LinkedList<RoutingPoint> w6rps = new LinkedList<RoutingPoint>();
+		w6rps.addLast(new RoutingPoint(56, 29));
+		w6 = new Wire(f1.getOutport(0), x1.getInport(0), w6rps);
+		LinkedList<RoutingPoint> w7rps = new LinkedList<RoutingPoint>();
+		w7rps.addLast(new RoutingPoint(56, 31));
+		w7 = new Wire(f1.getOutport(1), x1.getInport(1), w7rps);
+		LinkedList<RoutingPoint> w8rps = new LinkedList<RoutingPoint>();
+		w8 = new Wire(i3.getOutport(0), f1.getInport(0), w8rps);
+
+		try {
+			em.addElement(a1);
+			em.addElement(o1);
+			em.addElement(x1);
+			em.addElement(na1);
+			em.addElement(i1);
+			em.addElement(i2);
+			em.addElement(i3);
+			em.addElement(f1);
+		} catch (DuplicateElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (OverlappingElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		wm.addWire(w1);
 		wm.addWire(w2);
 		wm.addWire(w3);

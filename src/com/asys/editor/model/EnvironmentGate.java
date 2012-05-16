@@ -14,7 +14,7 @@ public class EnvironmentGate extends Element {
 	LogicValue output = null;
 	
 	public EnvironmentGate(){
-		super(Constant.getDefaultProperty(), 0, 1, 4, false, false);
+		super(Constant.getDefaultProperty(), 1, 1, 4, false, false);
 	}
 	
 	/* (non-Javadoc)

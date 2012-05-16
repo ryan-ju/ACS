@@ -7,13 +7,15 @@ import java.awt.Color;
 
 import com.asys.editor.model.Property;
 import com.asys.model.components.exceptions.InvalidPropertyException;
-import com.asys.model.components.exceptions.InvalidPropertyKeyException;
 import com.asys.model.components.exceptions.NoKeyException;
 
 /**
  *
  */
 public final class Constant {
+	//====================================================
+	// Editor parameters
+	//====================================================
 	public static final int UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3;
 	public static final int DEFAULT_GATE_WIDTH = 5, DEFAULT_GATE_HEIGHT = 4,
 			MIN_GATE_WIDTH = 4, MIN_GATE_HEIGHT = 4;
@@ -57,7 +59,12 @@ public final class Constant {
 	public static final int NOTIFICATION_DELAY = 5000;
 	public static final char UNDO = 'z', REDO = 'y', ROTATE_LEFT = 'l',
 			ROTATE_RIGHT = 'r';
-
+	
+	//====================================================
+	// Simulator parameters
+	//====================================================
+	public static final int CAUSATIVE_LINK_LIMIT = 100, PURGE_TRANSITION_EVENT_FACTORY_STEP_LIMIT = 1000;
+	
 	public static Property getDefaultProperty() {
 		Property p = new Property();
 		try {

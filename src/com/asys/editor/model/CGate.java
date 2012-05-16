@@ -3,7 +3,7 @@
  */
 package com.asys.editor.model;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import com.asys.constants.Constant;
 import com.asys.constants.LogicValue;
@@ -33,10 +33,19 @@ public class CGate extends Element {
 	 */
 	@Override
 	public void evaluate() {
-		ArrayList<LogicValue> inputs = new ArrayList<LogicValue>();
-		inputs.addAll(getInputs());
-		inputs.add(getOutput());
-		output = LogicValue.majority(inputs);
+		List<LogicValue> inputs = this.getInputs();
+		assert inputs.size() == 2;
+		if (inputs.get(0)==LogicValue.ONE && inputs.get(1) == LogicValue.ONE){
+			output = LogicValue.ONE;
+		}else if (inputs.get(0)==LogicValue.ZERO && inputs.get(1) == LogicValue.ZERO){
+			output = LogicValue.ZERO;
+		}else{
+			// TODO This method is troublesome, and should never be used.
+		}
+//		ArrayList<LogicValue> inputs = new ArrayList<LogicValue>();
+//		inputs.addAll(getInputs());
+//		inputs.add(getOutput());
+//		output = LogicValue.majority(inputs);
 	}
 
 	@Override

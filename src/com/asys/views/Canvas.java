@@ -77,6 +77,7 @@ import com.asys.editor.model.WireEdge;
 import com.asys.editor.model.WireEdgeCreationManager;
 import com.asys.editor.model.WireEdgeCreationManagerListener;
 import com.asys.editor.model.XorGate;
+import com.asys.simulator.GateFactory;
 
 /**
  * The has multiple layers, each layer is responsible for a specific task.
@@ -104,6 +105,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 	private WireCreationPanel wc_pl;
 	private WireEdgeCreationPanel wec_pl;
 	private ControlPanel control_pl;
+	private Mode mode;
+	private GateFactory gf;
 	static private InnerElementPainter iePainter;
 
 	public Canvas() {
@@ -132,6 +135,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		ec_pl = new GateCreationPanel();
 		control_pl = new ControlPanel();
 		TestPanel test_pl = new TestPanel();
+		gf = GateFactory.getInstance();
 		grid_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
 				Constant.DEFAULT_CANVAS_HEIGHT);
 		circuit_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
@@ -183,6 +187,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 	@Override
 	public void modeChanged(Mode mode) {
 		control_pl.modeChanged(mode);
+		circuit_pl.modeChanged(mode);
+		this.mode = mode;
 	}
 
 	class ControlPanel extends JPanel implements ModeManagerListener {
@@ -300,6 +306,22 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 						.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
 								"delete");
 				break;
+			case SIMULATION_MODE:
+				changeMouseListener(new DummyMouseAdapter());
+				changeMouseMotionListener(new DummyMouseAdapter());
+				changeKeyListener(new DummyKeyAdapter());
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
+						KeyStroke.getKeyStroke(Constant.UNDO));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
+						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
+						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
+						KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+				cmd.setCommandName(CommandName.DESELECT);
+				cmd.setParams(new Object[] {});
+				ext.execute(cmd);
+				break;
 			}
 		}
 
@@ -371,6 +393,17 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				cmd.setParams(new Object[] {});
 				ext.execute(cmd);
 			}
+
+		}
+
+		// ====================================================
+		// Dummy Adapters
+		// ====================================================
+		private class DummyMouseAdapter extends MouseAdapter {
+
+		}
+
+		private class DummyKeyAdapter extends KeyAdapter {
 
 		}
 
@@ -736,7 +769,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 						@Override
 						public void actionPerformed(ActionEvent e) {
 							cmd.setCommandName(CommandName.COPY);
-							cmd.setParams(new Object[]{});
+							cmd.setParams(new Object[] {});
 							ext.execute(cmd);
 						}
 
@@ -753,7 +786,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 						@Override
 						public void actionPerformed(ActionEvent e) {
 							cmd.setCommandName(CommandName.PASTE);
-							cmd.setParams(new Object[]{x, y});
+							cmd.setParams(new Object[] { x, y });
 							ext.execute(cmd);
 						}
 
@@ -1096,7 +1129,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	class CircuitPanel extends BufferedPanel implements CircuitManagerListener {
+	class CircuitPanel extends BufferedPanel implements CircuitManagerListener,
+			ModeManagerListener {
 		private InnerElementPainter iep;
 
 		public CircuitPanel() {
@@ -1108,6 +1142,15 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		public void update() {
 			this.needToChange();
 			this.repaint();
+		}
+
+		@Override
+		public void modeChanged(Mode m) {
+			if ((mode != Mode.SIMULATION_MODE && m == Mode.SIMULATION_MODE)
+					|| (mode == Mode.SIMULATION_MODE && m != Mode.SIMULATION_MODE)) {
+				this.needToChange();
+				this.repaint();
+			}
 		}
 
 		@Override
@@ -1148,6 +1191,14 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					Point p = new Point(x + w / 2, y + h / 2);
 					g2d.setColor(Color.BLUE);
 					paintArrow(g2d, p, elt.getOrientation(), 2, 2);
+				}
+				// Paint the gate names
+				if (mode == Mode.SIMULATION_MODE) {
+					String gate_name = gf.getGateNameByElement(elt);
+					if (gate_name != null) {
+						g2d.drawString(gate_name, elt.getX() * m - m / 2,
+								elt.getY() * m - m / 2);
+					}
 				}
 			}
 			g2d.setColor(Constant.WIRE_CLR);
@@ -1670,13 +1721,14 @@ abstract class BufferedPanel extends JPanel {
 	// Image img =
 	// Toolkit.getDefaultToolkit().getImage(Constant.IMAGE_PATH+"and.png");
 	protected void needToChange() {
-		if (buf != null) {
-			Graphics2D gc = buf.createGraphics();
-			gc.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR));
-			gc.fillRect(0, 0, buf.getWidth(), buf.getHeight());
-			gc.dispose();
-			buf = null;
-		}
+		// if (buf != null) {
+		// Graphics2D gc = buf.createGraphics();
+		// gc.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR));
+		// gc.fillRect(0, 0, buf.getWidth(), buf.getHeight());
+		// gc.dispose();
+		// buf = null;
+		// }
+		buf = null;
 		isDirty = true;
 	}
 

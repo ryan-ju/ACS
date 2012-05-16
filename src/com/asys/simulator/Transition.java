@@ -11,6 +11,7 @@ public class Transition {
 	private final String transition_id;
 	private final String start_event_id;
 	private final String end_event_id;
+	private boolean isRising;
 
 	public Transition(String transition_id, String start_event_id,
 			String end_event_id) {
@@ -29,5 +30,13 @@ public class Transition {
 	
 	public String getEndEventId(){
 		return end_event_id;
+	}
+	
+	public boolean isRising(){
+		return isRising;
+	}
+	
+	public void setDirection(boolean isRising){
+		this.isRising = isRising;
 	}
 }

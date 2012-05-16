@@ -32,6 +32,11 @@ public abstract class AbstractScript {
 		return temp;
 	}
 	
+	public void restoreCleanseHistory(){
+		this.restore();
+		history.clear();
+	}
+	
 	public String historyToString(){
 		StringBuffer buffer = new StringBuffer();
 		for (DelayValuePair pair:history){
