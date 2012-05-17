@@ -73,6 +73,10 @@ public class Queries {
 		return result;
 	}
 	
+	public static String getParentGateId(String output_port_id) throws IdNotExistException{
+		return pm.getOutputPort(output_port_id).getGateId();
+	}
+	
 	/**
 	 * This method cannot be used on environment gates.
 	 * @param gate_id

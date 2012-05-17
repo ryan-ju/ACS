@@ -4,6 +4,7 @@
 package com.asys.simulator;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import com.asys.constants.LogicValue;
@@ -168,11 +169,15 @@ public class TransitionEventFactory implements TransitionEventManager {
 	}
 	
 	@Override
-	public void removeEventsAfter(long time){
+	public void removeEventsBefore(long time){
+		LinkedList<String> remove = new LinkedList<String>();
 		for (Entry<String, TransitionEvent> entry:event_map.entrySet()){
 			if (entry.getValue().getCircuitTime()<time){
-				transition_map.remove(entry.getKey());
+				remove.add(entry.getKey());
 			}
+		}
+		for (String id:remove){
+			event_map.remove(id);
 		}
 	}
 	
@@ -181,5 +186,9 @@ public class TransitionEventFactory implements TransitionEventManager {
 		this.event_map.clear();
 		this.transition_map.clear();
 		transition_index = 0;
+	}
+	
+	public int getSize(){
+		return event_map.size();
 	}
 }

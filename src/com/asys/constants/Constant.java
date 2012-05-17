@@ -19,7 +19,7 @@ public final class Constant {
 	public static final int UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3;
 	public static final int DEFAULT_GATE_WIDTH = 5, DEFAULT_GATE_HEIGHT = 4,
 			MIN_GATE_WIDTH = 4, MIN_GATE_HEIGHT = 4;
-	public static final Long DEFAULT_MIN_DELAY = (long) 500,
+	public static final Long DEFAULT_MIN_DELAY = (long) 300,
 			DEFAULT_MAX_DELAY = (long) 1000;
 	public static final int GRID_SIZE = 12;
 	public static final float HIGHLIGHT_RADIUS_RATIO = 0.4f,

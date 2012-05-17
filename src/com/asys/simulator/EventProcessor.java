@@ -3,10 +3,9 @@
  */
 package com.asys.simulator;
 
-import java.awt.Event;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.asys.constants.Constant;
@@ -15,6 +14,7 @@ import com.asys.editor.model.CGate;
 import com.asys.editor.model.Element;
 import com.asys.editor.model.EnvironmentGate;
 import com.asys.editor.model.OutputGate;
+import com.asys.simulator.Scheduler.EventList;
 import com.asys.simulator.exceptions.IdExistException;
 import com.asys.simulator.exceptions.IdNotExistException;
 import com.asys.simulator.exceptions.SchedulerEmptyException;
@@ -32,6 +32,8 @@ public class EventProcessor {
 	private TransitionEventFactory tem;
 	// The key is transition_event_id+input_port_id
 	private HashMap<String, InputEvent> hard_set_map;
+	private LinkedList<String> hard_set_list; // A list of end event IDs
+	private LinkedList<String> hard_set_backup_list; // A list of input port IDs
 	private long purge_steps;
 	private long purge_time_marker;
 	private HashMap<String, LogicValue> local_input_cache;
@@ -50,6 +52,8 @@ public class EventProcessor {
 		this.pm = PortFactory.getInstance();
 		this.tem = TransitionEventFactory.getInstance();
 		this.hard_set_map = new HashMap<String, InputEvent>();
+		this.hard_set_list = new LinkedList<String>();
+		this.hard_set_backup_list = new LinkedList<String>();
 		this.purge_steps = 0;
 		this.purge_time_marker = 0;
 		local_input_cache = new HashMap<String, LogicValue>();
@@ -90,41 +94,39 @@ public class EventProcessor {
 
 			if (child_elt instanceof CGate) {
 				
-				
-				
+				event_scheduled_id.addAll(processCGate(transition_event_id, child_id, ip_id, old_input_value, local_input_cache));
 				
 			} else if (child_elt instanceof EnvironmentGate) {
 				AbstractScript script = Queries.getScript(child_id);
 				assert script != null;
 				if (tem.isStartEvent(transition_event_id)) {
-					AbstractScript.DelayValuePair pair = script.getNextPair();
-					while (pair != null && pair.getLogicValue() != LogicValue.X){
-						pair = script.getNextPair();
-					}
-					if (pair != null){
-						LogicValue new_lv = pair.getLogicValue();
-						long min_delay = pair.getDelay();
-						assert new_lv == LogicValue.X;
-						CausativeLink new_link = event.getCausativeLink().copy();
-						String new_event_id = tem.createTransitionEvent(child_id, new_lv, event.getCircuitTime()+min_delay, event.getCircuitTime(), new_link);
-						new_link.add(new_event_id);
-						scheduler.schedule(new_event_id);
-						event_scheduled_id.add(new_event_id);
-					}
+//					AbstractScript.DelayValuePair pair = script.getNextPair();
+//					while (pair != null && pair.getLogicValue() != LogicValue.X){
+//						pair = script.getNextPair();
+//					}
+//					if (pair != null){
+//						LogicValue new_lv = pair.getLogicValue();
+//						long min_delay = pair.getDelay();
+//						assert new_lv == LogicValue.X;
+//						CausativeLink new_link = event.getCausativeLink().copy();
+//						String new_event_id = tem.createTransitionEvent(child_id, new_lv, event.getCircuitTime()+min_delay, event.getCircuitTime(), new_link);
+//						new_link.add(new_event_id);
+//						scheduler.schedule(new_event_id);
+//						event_scheduled_id.add(new_event_id);
+//					}
 				}else{ // end event
-					AbstractScript.DelayValuePair pair = script.getNextPair();
-					while (pair != null && pair.getLogicValue() == LogicValue.X){
-						pair = script.getNextPair();
-					}
+					AbstractScript.DelayValuePair pair = script.getNextPairLogging();
 					if (pair != null){
 						LogicValue new_lv = pair.getLogicValue();
 						long max_delay = pair.getDelay();
 						assert new_lv != LogicValue.X;
-						CausativeLink new_link = event.getCausativeLink().copy();
-						String new_event_id = tem.createTransitionEvent(child_id, new_lv, event.getCircuitTime()+max_delay, event.getCircuitTime(), new_link);
-						new_link.add(new_event_id);
-						scheduler.schedule(new_event_id);
-						event_scheduled_id.add(new_event_id);
+						String new_start_event_id = tem.createTransitionEvent(child_id, LogicValue.X, event.getCircuitTime()+max_delay, event.getCircuitTime(), new CausativeLink());
+						scheduler.schedule(new_start_event_id);
+						event_scheduled_id.add(new_start_event_id);
+						
+						String new_end_event_id = tem.createTransitionEvent(child_id, new_lv, event.getCircuitTime()+max_delay, event.getCircuitTime(), new CausativeLink());
+						scheduler.schedule(new_end_event_id);
+						event_scheduled_id.add(new_end_event_id);
 					}
 				}
 			} else if (child_elt instanceof OutputGate) {
@@ -202,23 +204,160 @@ public class EventProcessor {
 		
 		purge_steps++;
 		if (purge_steps >= Constant.PURGE_TRANSITION_EVENT_FACTORY_STEP_LIMIT) {
-			try {
-				purgeTransitionEventFactory();
-			} catch (SchedulerEmptyException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			purgeTransitionEventFactory();
+			purge_steps = 0;
+		}
+		return event_scheduled_id;
+	}
+	
+	private ArrayList<String> processCGate(String transition_event_id, String child_id, String ip_id, LogicValue old_input_value, HashMap<String, LogicValue> local_input_cache) throws IdNotExistException, IdExistException{
+		ArrayList<String> event_scheduled_id = new ArrayList<String>();
+		
+		List<LogicValue> other_inputs = Queries.getOtherInputValues(local_input_cache, ip_id);
+		TransitionEvent event = tem.getTransitionEvent(transition_event_id);
+		List<String> other_ips = Queries.getOtherInputPorts(ip_id);
+		assert other_inputs.size() == 1;
+		assert other_ips.size() == 1;
+		LogicValue other_input = other_inputs.get(0);
+		String other_ip = other_ips.get(0);
+
+		if (tem.isStartEvent(transition_event_id)) {
+			if (other_input == LogicValue.X) {
+				String parent_gate_id = Queries.getParentGateId(pm
+						.getInputPort(other_ip).getOutputPortId());
+				EventList parent_gate_el = scheduler
+				.getEventListForGate(parent_gate_id);
+				String other_te_id = parent_gate_el.getFirst();
+				if (other_te_id == null){
+					if (other_input == event.getNewValue()) { // Both inputs are X now
+						// Get the child gate's minimum delay
+						long child_min_delay = Queries
+								.getMinDelay(child_id);
+						// Create a new CausativeLink
+						CausativeLink new_link = event
+								.getCausativeLink().copy();
+						String new_start_event_id = tem
+								.createTransitionEvent(
+										child_id,
+										event.getNewValue(),
+										child_min_delay
+												+ event.getCircuitTime(),
+										event.getCircuitTime(),
+										new_link);
+						new_link.add(new_start_event_id);
+						// Schedule the new event
+						scheduler.schedule(new_start_event_id);
+						event_scheduled_id.add(new_start_event_id);
+					} else { // Latched
+								// Don't schedule any event
+						
+					}
+				} else {
+					assert !tem.isStartEvent(other_te_id);
+					TransitionEvent other_te = tem
+							.getTransitionEvent(other_te_id);
+					LogicValue other_lv = other_te.getNewValue();
+					CausativeLink other_link = other_te
+							.getCausativeLink();
+					CausativeLink this_link = event.getCausativeLink();
+					long other_time = other_te.getCircuitTime();
+					long this_time = event.getCircuitTime();
+					long ambiguous_delay = CausativeLink
+							.getCommonAmbiguousDelay(this_link,
+									other_link);
+					System.out.println("Common ambiguous delay = "
+							+ ambiguous_delay);
+
+					// Test if the difference of the two events is no
+					// bigger than the common
+					// ambiguous delay. If so, then no new event should
+					// be scheduled.
+					if ((other_time - this_time) <= ambiguous_delay
+							&& other_lv == old_input_value) {
+						System.out.println("************");
+						System.out.println("*Ambiguous!*");
+						System.out.println("************");
+						// Set hard_set_map
+						hard_set_list.add(other_te_id);
+						// Don't schedule any event
+					} else {
+						if (other_input == event.getNewValue()) { // Set
+							// Unset hard_set_map
+							while(hard_set_list.remove(other_te_id)){
+								
+							}
+							
+							event_scheduled_id.add(scheduleNewEvent(child_id, true, event.getCircuitTime(), event.getNewValue(), event
+									.getCausativeLink()));
+
+						} else { // Latched
+									// Don't schedule any event
+						}
+					}
+				}
+			}else{ // other_input is not X
+				
+			}
+		} else { // end event
+			if (other_input == event.getNewValue()
+					|| hard_set_list.contains(transition_event_id)) { // Set
+				
+				event_scheduled_id.add(scheduleNewEvent(child_id, false,
+						event.getCircuitTime(), event.getNewValue(),
+						event.getCausativeLink()));
+
+				// Remove from hard_set_list
+				hard_set_list.remove(transition_event_id);
+			} else { // Latched
+						// Don't schedule any event
 			}
 		}
 		return event_scheduled_id;
 	}
 	
+	/**
+	 * 
+	 * @param gate_id
+	 * @param isMinDelay
+	 * @param base_time
+	 * @param new_value
+	 * @param causative_link
+	 * @return - the ID of the event scheduled
+	 * @throws IdNotExistException 
+	 * @throws IdExistException 
+	 */
+	private String scheduleNewEvent(String gate_id, boolean isMinDelay, long base_time, LogicValue new_value, CausativeLink causative_link) throws IdNotExistException, IdExistException{
+		long delay;
+		if (isMinDelay){
+			delay = Queries.getMinDelay(gate_id);
+		}else{
+			delay = Queries.getMaxDelay(gate_id);
+		}
+		
+		CausativeLink new_link = causative_link.copy();
+		
+		String new_event_id = tem.createTransitionEvent(gate_id, new_value, base_time+delay, base_time, new_link);
+		new_link.add(new_event_id);
+		scheduler.schedule(new_event_id);
+		return new_event_id;
+	}
 	
+	protected List<String> getHardSetList(){
+		return hard_set_list;
+	}
 
-	private void purgeTransitionEventFactory() throws IdNotExistException, SchedulerEmptyException {
-		tem.removeEventsAfter(purge_time_marker);
+	private void purgeTransitionEventFactory() throws IdNotExistException {
+		tem.removeEventsBefore(purge_time_marker);
 		purge_steps = 0;
 		// Reset purge_time_marker to the latest event.
-		purge_time_marker = tem.getTransitionEvent(scheduler.getNextTransitionEventIdNoEffect()).getCircuitTime();
+		if (!scheduler.isEmpty()){
+			try {
+				purge_time_marker = tem.getTransitionEvent(scheduler.getNextTransitionEventIdNoEffect()).getCircuitTime();
+			} catch (SchedulerEmptyException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 
 	// ====================================================
@@ -246,4 +385,21 @@ public class EventProcessor {
 			this.hard_set = b;
 		}
 	}
+	
+//	/**
+//	 * This class is to decide if 
+//	 * @author ryan
+//	 *
+//	 */
+//	private class hardSet{
+//		private HashMap<String, LogicValue> hard_set_map; // A map of end event IDs to 
+//		private HashMap<String, Pair<Long, CausativeLink>> hard_set_backup_map;
+//		
+//		
+//	}
+//	
+//	private class Pair<S, T>{
+//		S first;
+//		T second;
+//	}
 }

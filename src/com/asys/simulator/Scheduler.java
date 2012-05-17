@@ -21,6 +21,7 @@ public class Scheduler {
 	private TransitionEventFactory tef;
 	private EventList el;
 	private GateEventListManager gelm;
+	private HashMap<String, String> most_recent_history;
 	private static Scheduler instance;
 
 	public static Scheduler getInstance() {
@@ -36,6 +37,7 @@ public class Scheduler {
 		this.tef = TransitionEventFactory.getInstance();
 		this.el = new EventList();
 		this.gelm = new GateEventListManager();
+		this.most_recent_history = new HashMap<String, String>();
 	}
 
 	protected void initialize() {
@@ -150,6 +152,7 @@ public class Scheduler {
 					.getTransitionEventAt(gate_id, i - 1);
 			if (previous_event_id != null
 					&& tef.isStartEvent(previous_event_id)) {
+				// The following is wrong: the event is not scheduled
 				// This event is still scheduled
 //				gel.insertEvent(transition_event_id);
 //				el.insertEvent(transition_event_id);
@@ -162,7 +165,12 @@ public class Scheduler {
 			gel.insertEvent(transition_event_id);
 			el.insertEvent(transition_event_id);
 		}
+		most_recent_history.put(gate_id, transition_event_id);
 		return waste;
+	}
+	
+	protected String getMostRecentHistory(String gate_id){
+		return most_recent_history.get(gate_id);
 	}
 
 	protected EventList getEventListForGate(String gate_id) {
@@ -213,7 +221,7 @@ public class Scheduler {
 	 * @author ryan
 	 * 
 	 */
-	private class EventList {
+	public class EventList {
 		private LinkedList<String> list;
 
 		protected EventList() {
@@ -267,11 +275,19 @@ public class Scheduler {
 		}
 
 		protected String getFirst() {
-			return list.getFirst();
+			if (list.isEmpty()){
+				return null;
+			}else{
+				return list.getFirst();
+			}
 		}
 
 		protected String getLast() {
-			return list.getLast();
+			if (list.isEmpty()){
+				return null;
+			}else{
+				return list.getLast();
+			}
 		}
 
 		protected String getAt(int i) {
