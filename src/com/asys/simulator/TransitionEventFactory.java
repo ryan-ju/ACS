@@ -175,4 +175,11 @@ public class TransitionEventFactory implements TransitionEventManager {
 			}
 		}
 	}
+	
+	@Override
+	public void clear(){
+		this.event_map.clear();
+		this.transition_map.clear();
+		transition_index = 0;
+	}
 }

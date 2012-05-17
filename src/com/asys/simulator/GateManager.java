@@ -15,4 +15,5 @@ public interface GateManager {
 	public Gate getGate(String id) throws IdNotExistException;
 	public Set<String> getGateIds();
 	public boolean gateIdExists(String id);
+	public void clear();
 }

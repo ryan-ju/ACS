@@ -8,8 +8,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import com.asys.constants.Direction;
+import com.asys.constants.ElementPropertyKey;
 import com.asys.model.components.exceptions.DuplicateElementException;
+import com.asys.model.components.exceptions.InvalidPropertyException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
+import com.asys.model.components.exceptions.NoKeyException;
 import com.asys.model.components.exceptions.OverlappingElementException;
 import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
 
@@ -19,11 +22,11 @@ import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
  */
 public class TestInitialiser {
 	public static void initialise() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException, SecurityException, IllegalArgumentException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-		simple_gates_small();
+		env_gate();
 		
 	}
 	
-	private static void mixed_gates() throws SecurityException, NoSuchMethodException, PortNumberOutOfBoundException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, MaxNumberOfPortsOutOfBoundException{
+	public static void mixed_gates() throws SecurityException, NoSuchMethodException, PortNumberOutOfBoundException, IllegalArgumentException, IllegalAccessException, InvocationTargetException, MaxNumberOfPortsOutOfBoundException{
 		CircuitManager cm = CircuitManager.getInstance();
 		WireManager wm = cm.getWireManager();
 		ElementManager em = cm.getElementManager();
@@ -271,7 +274,7 @@ public class TestInitialiser {
 		wm.addWire(wires);
 	}
 	
-	private static void and_gates_only() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
+	public static void and_gates_only() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
 		CircuitManager cm = CircuitManager.getInstance();
 		WireManager wm = cm.getWireManager();
 		ElementManager em = cm.getElementManager();
@@ -373,7 +376,7 @@ public class TestInitialiser {
 		wm.addWire(w8);
 	}
 	
-	private static void simple_gates_small() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
+	public static void simple_gates_small() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
 		CircuitManager cm = CircuitManager.getInstance();
 		WireManager wm = cm.getWireManager();
 		ElementManager em = cm.getElementManager();
@@ -462,5 +465,63 @@ public class TestInitialiser {
 		wm.addWire(w6);
 		wm.addWire(w7);
 		wm.addWire(w8);
+	}
+	
+	public static void env_gate() throws PortNumberOutOfBoundException, MaxNumberOfPortsOutOfBoundException{
+		CircuitManager cm = CircuitManager.getInstance();
+		WireManager wm = cm.getWireManager();
+		ElementManager em = cm.getElementManager();
+		
+		EnvironmentGate e1;
+		NotGate n1;
+		Wire w1, w2;
+		
+		e1 = new EnvironmentGate();
+		e1.setPosition(10, 10);
+		n1 = new NotGate();
+		n1.setPosition(10, 20);
+		n1.setOrientation(Direction.LEFT);
+		
+		Protocol p = new Protocol();
+		
+		assert p.setString("loop 10 (<10, X> <5, 1>)");
+		
+		e1.getProperty().addKey(ElementPropertyKey.PROTOCOL);
+		try {
+			e1.getProperty().setProperty(ElementPropertyKey.PROTOCOL, p);
+		} catch (InvalidPropertyException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		} catch (NoKeyException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+		}
+		
+		LinkedList<RoutingPoint> w1rps = new LinkedList<RoutingPoint>();
+		w1rps.addLast(new RoutingPoint(16, 12));
+		w1rps.addLast(new RoutingPoint(16, 22));
+		w1 = new Wire(e1.getOutport(0), n1.getInport(0),
+				w1rps);
+		
+		
+		LinkedList<RoutingPoint> w2rps = new LinkedList<RoutingPoint>();
+		w2rps.addLast(new RoutingPoint(8, 22));
+		w2rps.addLast(new RoutingPoint(8, 12));
+		w2 = new Wire(n1.getOutport(0), e1.getInport(0),
+				w2rps);
+		
+		try {
+			em.addElement(n1);
+			em.addElement(e1);
+		} catch (DuplicateElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (OverlappingElementException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		wm.addWire(w1);
+		wm.addWire(w2);
 	}
 }

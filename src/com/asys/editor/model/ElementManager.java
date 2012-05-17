@@ -39,6 +39,17 @@ public class ElementManager {
 		this.cm = CircuitManager.getInstance();
 		cm.getEdgeManager();
 	}
+	
+	public void clear(){
+		elts = new ArrayList<Element>();
+		dic = new ElementDictionary(new ArrayList<Element>());
+		dic_exc = new ElementDictionary(new ArrayList<Element>());
+		bound = new Rectangle();
+		dic.build();
+		dic_exc.build();
+		hasBoundChanged = true;
+		// hasElementsChanged = true;
+	}
 
 	protected void addElement(Element new_elt)
 			throws DuplicateElementException, OverlappingElementException {

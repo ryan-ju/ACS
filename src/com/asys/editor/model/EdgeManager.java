@@ -9,9 +9,9 @@ import com.asys.editor.model.ElementManager.ElementDictionary;
 public class EdgeManager {
 	private WireManager wm;
 	private ElementManager em;
-	private final HashMap<Integer, ArrayList<WireEdge>> h_edges, v_edges;
+	private HashMap<Integer, ArrayList<WireEdge>> h_edges, v_edges;
 	// private final HashMap<Integer, ArrayList<RoutingPoint>> h_ps, v_ps;
-	private final ArrayList<Edge> overlap;
+	private ArrayList<Edge> overlap;
 	private boolean needToBuild, needToRenewOverlap;
 
 	public EdgeManager() {
@@ -27,6 +27,16 @@ public class EdgeManager {
 	public void init() {
 		this.wm = CircuitManager.getInstance().getWireManager();
 		this.em = CircuitManager.getInstance().getElementManager();
+	}
+	
+	public void clear(){
+		h_edges = new HashMap<Integer, ArrayList<WireEdge>>();
+		v_edges = new HashMap<Integer, ArrayList<WireEdge>>();
+		// h_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
+		// v_ps = new HashMap<Integer, ArrayList<RoutingPoint>>();
+		overlap = new ArrayList<Edge>();
+		needToBuild = true;
+		needToRenewOverlap = true;
 	}
 
 	protected void build() {

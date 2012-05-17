@@ -3,6 +3,7 @@ package com.asys.simulator;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -22,6 +23,7 @@ public class EventProcessorTestNGTest {
 	private Builder b;
 	private Scheduler s;
 	private EventProcessor p;
+	private SimulatorModel sm;
 
 	@BeforeClass
 	public void setup() {
@@ -31,9 +33,17 @@ public class EventProcessorTestNGTest {
 		b = Builder.getInstance();
 		s = Scheduler.getInstance();
 		p = EventProcessor.getInstance();
+		sm = SimulatorModel.getInstance();
 		
+	}
+
+	@Test
+	public void processEventsInSmallSimpleCircuit() throws IdNotExistException, IdExistException, SchedulerEmptyException {
+		//====================================================
+		// Setup
+		//====================================================
 		try {
-			TestInitialiser.initialise();
+			TestInitialiser.simple_gates_small();
 		} catch (SecurityException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -46,16 +56,7 @@ public class EventProcessorTestNGTest {
 		} catch (MaxNumberOfPortsOutOfBoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (NoSuchMethodException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} 
 
 		b.build(cm);
 		System.out.println("==========GateFactory dump==========");
@@ -96,11 +97,11 @@ public class EventProcessorTestNGTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-	}
-
-	@Test
-	public void processEventsAndSchedule() throws IdNotExistException, IdExistException, SchedulerEmptyException {
+		
+		//====================================================
+		// Test
+		//====================================================
+		
 		CausativeLink link1 = new CausativeLink();
 		String t1 = tef.createTransitionEvent("g6", LogicValue.X, 5, 100, link1);
 		link1.add(t1);
@@ -144,5 +145,51 @@ public class EventProcessorTestNGTest {
 			System.out.println("\tScheduler size = "+s.getTotalNumberOfEventsOnScheduler());
 			i++;
 		}
+		
+		cm.clear();
+		sm.clear();
+	}
+	
+	@Test
+	public void testEnvGate() throws IdNotExistException{
+		try {
+			TestInitialiser.env_gate();
+		} catch (PortNumberOutOfBoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (MaxNumberOfPortsOutOfBoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		b.build(cm);
+		System.out.println("==========GateFactory dump==========");
+		System.out.println(gf.dump());
+		
+		// Set initial values for gates
+		Gate g0, g1;
+		try {
+
+			g0 = gf.getGate("g0");
+			g1 = gf.getGate("g1");
+
+			g0.setCurrentLogicValue(LogicValue.ONE);
+			g1.setCurrentLogicValue(LogicValue.ZERO);
+
+			// Initialize the scheduler
+			s.initialize();
+		} catch (IdNotExistException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		//====================================================
+		// Test
+		//====================================================
+		
+		CausativeLink link1 = new CausativeLink();
+		String t1 = tef.createTransitionEvent("g0", LogicValue.X, 5, 100, link1);
+		link1.add(t1);
+		
 	}
 }

@@ -139,6 +139,24 @@ public class GateFactory implements GateManager {
 		return map.containsKey(id);
 	}
 	
+	@Override
+	public void clear(){
+		this.map.clear();
+		this.inner_map.clear();
+		next_available_index = 0;
+		next_input_gate_index = 0;
+		next_output_gate_index = 0;
+		next_env_gate_index = 0;
+		next_not_gate_index = 0;
+		next_and_gate_index = 0;
+		next_or_gate_index = 0;
+		next_nand_gate_index = 0;
+		next_nor_gate_index = 0;
+		next_xor_gate_index = 0;
+		next_c_gate_index = 0;
+		next_fanout_index = 0;
+	}
+	
 	public String getIdByElement(Element elt){
 		return inner_map.get(elt);
 	}

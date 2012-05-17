@@ -54,6 +54,12 @@ public class EventProcessor {
 		this.purge_time_marker = 0;
 		local_input_cache = new HashMap<String, LogicValue>();
 	}
+	
+	public void reset(){
+		this.purge_steps = 0;
+		this.purge_time_marker = 0;
+		local_input_cache = new HashMap<String, LogicValue>();
+	}
 
 	/**
 	 * 

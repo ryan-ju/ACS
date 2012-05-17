@@ -34,6 +34,13 @@ public class CircuitManager {
 		return cm;
 	}
 	
+	public void clear(){
+		eltm.clear();
+		wm.clear();
+		edgm.clear();
+		fireStateChangedEvent();
+	}
+	
 	public static void setCircuitManager(CircuitManager cm){
 		CircuitManager.cm = cm; 
 	}

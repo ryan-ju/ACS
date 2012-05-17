@@ -14,4 +14,5 @@ public interface TransitionEventManager {
 	public boolean transitionEventIdExists(String id);
 	public boolean isStartEvent(String id) throws IdNotExistException;
 	public void removeEventsAfter(long time);
+	public void clear();
 }

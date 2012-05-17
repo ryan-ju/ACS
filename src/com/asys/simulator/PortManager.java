@@ -19,4 +19,5 @@ public interface PortManager {
 	public Set<String> getInputPortIds();
 	public Set<String> getOutputPortIds();
 	public boolean isInputPort(String port_id) throws IdNotExistException;
+	public void clear();
 }

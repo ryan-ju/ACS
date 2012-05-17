@@ -123,6 +123,14 @@ public class PortFactory implements PortManager {
 			throw new IdNotExistException(port_id);
 		}
 	}
+	
+	@Override
+	public void clear(){
+		this.input_port_map = new HashMap<String, InputPort>();
+		this.output_port_map = new HashMap<String, OutputPort>();
+		input_port_index = 0;
+		output_port_index = 0;
+	}
 
 	/**
 	 * Returns a log of the state of this instance.  The log has the format:

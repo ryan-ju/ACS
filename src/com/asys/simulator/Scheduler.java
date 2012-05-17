@@ -79,6 +79,14 @@ public class Scheduler {
 			return next_event_id;
 		}
 	}
+	
+	public void reset(){
+		this.gf = GateFactory.getInstance();
+		this.tef = TransitionEventFactory.getInstance();
+		this.el = new EventList();
+		this.gelm = new GateEventListManager();
+		initialize();
+	}
 
 	/**
 	 * For the moment, use the same scheduling scheme for both C and non-C gates.

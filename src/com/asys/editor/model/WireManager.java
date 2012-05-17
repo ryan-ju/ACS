@@ -24,6 +24,10 @@ public class WireManager {
 		cm = CircuitManager.getInstance();
 		edgm = cm.getEdgeManager();
 	}
+	
+	public void clear(){
+		this.wires = new ArrayList<Wire>();
+	}
 
 	protected void addWire(Wire new_wire) {
 		wires.add(new_wire);
