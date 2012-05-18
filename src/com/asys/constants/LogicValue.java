@@ -11,6 +11,21 @@ import java.util.List;
 public enum LogicValue {
 	ZERO, ONE, X;
 
+	public static LogicValue parse(String s) {
+		if (s.toLowerCase().equals("1") || s.toLowerCase().equals("true")
+				|| s.toLowerCase().equals("one")) {
+			return ONE;
+		} else if (s.toLowerCase().equals("0")
+				|| s.toLowerCase().equals("false")
+				|| s.toLowerCase().equals("zero")) {
+			return ZERO;
+		} else if (s.toLowerCase().equals("x")) {
+			return X;
+		} else {
+			return null;
+		}
+	}
+
 	@Override
 	public String toString() {
 		if (this.equals(ZERO))

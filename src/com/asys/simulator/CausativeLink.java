@@ -103,7 +103,7 @@ public class CausativeLink {
 			ArrayList<String> link1_gate_ids = getListOfGateIDs(link1);
 			ArrayList<String> link2_gate_ids = getListOfGateIDs(link2);
 			int i = 0;
-			boolean found = false;
+//			boolean found = false;
 			long gate_delay = -1;
 			while (i<link1_gate_ids.size()){
 				int j = 0;
@@ -113,18 +113,18 @@ public class CausativeLink {
 					if (link1_gate_ids.get(i).equals(link2_gate_ids.get(j))){
 						gate_delay = Queries.getMaxDelay(gate_id)-Queries.getMinDelay(gate_id);
 						// Check time difference
-						long time1 = transition_event_manager.getTransitionEvent(link1.getTransitionEventIds().get(i)).getCircuitTime();
-						long time2 = transition_event_manager.getTransitionEvent(link2.getTransitionEventIds().get(j)).getCircuitTime();
-						if (time1 < time2 && (time2-time1) <= gate_delay){
-							found = true;
-							break;
-						}
+//						long time1 = transition_event_manager.getTransitionEvent(link1.getTransitionEventIds().get(i)).getCircuitTime();
+//						long time2 = transition_event_manager.getTransitionEvent(link2.getTransitionEventIds().get(j)).getCircuitTime();
+//						if (time1 < time2 && (time2-time1) <= gate_delay){
+//							found = true;
+//							break;
+//						}
 					}
 					j++;
 				}
-				if (found){
-					break;
-				}
+//				if (found){
+//					break;
+//				}
 				i++;
 			}
 			return gate_delay;

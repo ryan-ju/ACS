@@ -33,10 +33,11 @@ public class EventProcessor {
 	// The key is transition_event_id+input_port_id
 	private HashMap<String, InputEvent> hard_set_map;
 	private LinkedList<String> hard_set_list; // A list of end event IDs
-	private LinkedList<String> hard_set_backup_list; // A list of input port IDs
 	private long purge_steps;
 	private long purge_time_marker;
 	private HashMap<String, LogicValue> local_input_cache;
+	private LinkedList<EventProcessorErrorListener> error_listeners;
+	private LinkedList<EventProcessorListener> listeners;
 	private static EventProcessor instance;
 
 	public static EventProcessor getInstance() {
@@ -53,9 +54,10 @@ public class EventProcessor {
 		this.tem = TransitionEventFactory.getInstance();
 		this.hard_set_map = new HashMap<String, InputEvent>();
 		this.hard_set_list = new LinkedList<String>();
-		this.hard_set_backup_list = new LinkedList<String>();
 		this.purge_steps = 0;
 		this.purge_time_marker = 0;
+		this.error_listeners = new LinkedList<EventProcessorErrorListener>();
+		this.listeners = new LinkedList<EventProcessorListener>();
 		local_input_cache = new HashMap<String, LogicValue>();
 	}
 	
@@ -63,6 +65,18 @@ public class EventProcessor {
 		this.purge_steps = 0;
 		this.purge_time_marker = 0;
 		local_input_cache = new HashMap<String, LogicValue>();
+	}
+	
+	public void addErrorListener(EventProcessorErrorListener listener){
+		if (!error_listeners.contains(listener)){
+			error_listeners.add(listener);
+		}
+	}
+	
+	public void addListener(EventProcessorListener listener){
+		if (!listeners.contains(listener)){
+			listeners.add(listener);
+		}
 	}
 
 	/**
@@ -207,6 +221,7 @@ public class EventProcessor {
 			purgeTransitionEventFactory();
 			purge_steps = 0;
 		}
+		fireEventProcessed();
 		return event_scheduled_id;
 	}
 	
@@ -229,28 +244,9 @@ public class EventProcessor {
 				.getEventListForGate(parent_gate_id);
 				String other_te_id = parent_gate_el.getFirst();
 				if (other_te_id == null){
+					fireError("Potential ambiguous transition at gate "+gm.getGate(child_id).getGateName());
 					if (other_input == event.getNewValue()) { // Both inputs are X now
-						// Get the child gate's minimum delay
-						long child_min_delay = Queries
-								.getMinDelay(child_id);
-						// Create a new CausativeLink
-						CausativeLink new_link = event
-								.getCausativeLink().copy();
-						String new_start_event_id = tem
-								.createTransitionEvent(
-										child_id,
-										event.getNewValue(),
-										child_min_delay
-												+ event.getCircuitTime(),
-										event.getCircuitTime(),
-										new_link);
-						new_link.add(new_start_event_id);
-						// Schedule the new event
-						scheduler.schedule(new_start_event_id);
-						event_scheduled_id.add(new_start_event_id);
-					} else { // Latched
-								// Don't schedule any event
-						
+						event_scheduled_id.add(scheduleNewEvent(child_id, true, event.getCircuitTime(), event.getNewValue(), event.getCausativeLink()));
 					}
 				} else {
 					assert !tem.isStartEvent(other_te_id);
@@ -286,30 +282,34 @@ public class EventProcessor {
 							while(hard_set_list.remove(other_te_id)){
 								
 							}
-							
 							event_scheduled_id.add(scheduleNewEvent(child_id, true, event.getCircuitTime(), event.getNewValue(), event
 									.getCausativeLink()));
-
 						} else { // Latched
 									// Don't schedule any event
 						}
 					}
 				}
 			}else{ // other_input is not X
-				
+				if (other_input == old_input_value){ // The C gate was in setting state
+					// No event is scheduled
+				}else{
+					event_scheduled_id.add(scheduleNewEvent(child_id, true, event.getCircuitTime(), event.getNewValue(), event
+							.getCausativeLink()));
+				}
 			}
 		} else { // end event
 			if (other_input == event.getNewValue()
 					|| hard_set_list.contains(transition_event_id)) { // Set
-				
 				event_scheduled_id.add(scheduleNewEvent(child_id, false,
 						event.getCircuitTime(), event.getNewValue(),
 						event.getCausativeLink()));
 
 				// Remove from hard_set_list
-				hard_set_list.remove(transition_event_id);
+				while(hard_set_list.remove(transition_event_id)){
+					
+				}
 			} else { // Latched
-						// Don't schedule any event
+				// No event is scheduled
 			}
 		}
 		return event_scheduled_id;
@@ -344,6 +344,18 @@ public class EventProcessor {
 	
 	protected List<String> getHardSetList(){
 		return hard_set_list;
+	}
+	
+	private void fireEventProcessed(){
+		for (EventProcessorListener listener:listeners){
+			listener.update();
+		}
+	}
+	
+	private void fireError(String message){
+		for (EventProcessorErrorListener listener:error_listeners){
+			listener.trigger(message);
+		}
 	}
 
 	private void purgeTransitionEventFactory() throws IdNotExistException {

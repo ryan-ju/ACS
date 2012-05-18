@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.asys.constants.ElementPropertyKey;
 import com.asys.constants.LogicValue;
 import com.asys.editor.model.CircuitManager;
-import com.asys.editor.model.Protocol;
 import com.asys.editor.model.TestInitialiser;
 import com.asys.model.components.exceptions.InvalidPropertyKeyException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
@@ -389,14 +387,24 @@ public class EventProcessorTestNGTest {
 		//====================================================
 		
 		CausativeLink link1 = new CausativeLink();
-		String t1 = tef.createTransitionEvent("g2", LogicValue.X, 10, 100, link1);
+		String t1 = tef.createTransitionEvent("g2", LogicValue.X, 0, 100, link1);
 		link1.add(t1);
 		CausativeLink link2 = new CausativeLink();
-		String t2 = tef.createTransitionEvent("g2", LogicValue.ONE, 10, 100, link2);
+		String t2 = tef.createTransitionEvent("g2", LogicValue.ONE, 1000, 100, link2);
 		link1.add(t2);
 		
 		s.schedule(t1);
 		s.schedule(t2);
+		
+		p.addErrorListener(new EventProcessorErrorListener() {
+			
+			@Override
+			public void trigger(String message) {
+				System.out.println("***************************");
+				System.out.println(message);
+				System.out.println("***************************");
+			}
+		});
 		
 		int i = 0;
 		while (i<3000 && !s.isEmpty()){

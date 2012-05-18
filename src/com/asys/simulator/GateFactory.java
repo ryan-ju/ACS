@@ -110,6 +110,7 @@ public class GateFactory implements GateManager {
 			throw new InvalidElementException(element.getClass().toString());
 		}
 		inner_map.put(element, gate_id);
+		System.out.println("GateFactory.createGate(), inner_map has put <"+element.toString()+", "+gate_id+">");
 		return gate_id;
 	}
 

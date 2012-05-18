@@ -41,6 +41,7 @@ import com.asys.model.components.exceptions.InvalidPropertyKeyException;
 public class PropertyViewer extends JScrollPane {
 	JTable table;
 	PropertyTableModel ptm;
+	Element elt;
 
 	public PropertyViewer() {
 		init();
@@ -65,7 +66,6 @@ public class PropertyViewer extends JScrollPane {
 			SelectionManagerListener {
 		ArrayList<Entry<ElementPropertyKey, Object>> list;
 		boolean[] editabilityMap;
-		Element elt;
 
 		public PropertyTableModel() {
 			list = new ArrayList<Entry<ElementPropertyKey, Object>>();
@@ -321,8 +321,18 @@ public class PropertyViewer extends JScrollPane {
 				Executor.getInstance().execute(cmd);
 				break;
 			case MIN_DELAY:
+				num = Integer.parseInt(str);
+				cmd = Command.getInstance();
+				cmd.setCommandName(CommandName.CHANGE_MIN_DELAY);
+				cmd.setParams(new Object[] { str, elt });
+				Executor.getInstance().execute(cmd);
 				break;
 			case MAX_DELAY:
+				num = Integer.parseInt(str);
+				cmd = Command.getInstance();
+				cmd.setCommandName(CommandName.CHANGE_MAX_DELAY);
+				cmd.setParams(new Object[] { str, elt });
+				Executor.getInstance().execute(cmd);
 				break;
 			}
 			ptm.update();

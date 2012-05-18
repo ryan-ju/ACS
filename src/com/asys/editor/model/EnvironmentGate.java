@@ -4,6 +4,7 @@
 package com.asys.editor.model;
 
 import com.asys.constants.Constant;
+import com.asys.constants.ElementPropertyKey;
 import com.asys.constants.LogicValue;
 
 /**
@@ -15,6 +16,7 @@ public class EnvironmentGate extends Element {
 	
 	public EnvironmentGate(){
 		super(Constant.getDefaultProperty(), 1, 1, 4, false, false);
+		this.getProperty().addKey(ElementPropertyKey.PROTOCOL);
 	}
 	
 	/* (non-Javadoc)

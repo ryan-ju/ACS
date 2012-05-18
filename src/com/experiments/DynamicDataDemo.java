@@ -135,6 +135,7 @@ public class DynamicDataDemo extends ApplicationFrame implements ActionListener 
 		axis.setFixedAutoRange(60000.0); // 60 seconds
 		axis = plot.getRangeAxis();
 		axis.setRange(0.0, 200.0);
+		axis.setVisible(false);
 		return result;
 	}
 

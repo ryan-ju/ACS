@@ -29,11 +29,13 @@ import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JLayeredPane;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -42,7 +44,9 @@ import javax.swing.KeyStroke;
 import com.asys.constants.CommandName;
 import com.asys.constants.Constant;
 import com.asys.constants.Direction;
+import com.asys.constants.ElementPropertyKey;
 import com.asys.constants.ImageFetcher;
+import com.asys.constants.LogicValue;
 import com.asys.editor.model.AndGate;
 import com.asys.editor.model.CGate;
 import com.asys.editor.model.CircuitManager;
@@ -66,6 +70,7 @@ import com.asys.editor.model.OrGate;
 import com.asys.editor.model.Outport;
 import com.asys.editor.model.OutputGate;
 import com.asys.editor.model.Point;
+import com.asys.editor.model.Protocol;
 import com.asys.editor.model.Rectangle;
 import com.asys.editor.model.RoutingPoint;
 import com.asys.editor.model.SelectionManager;
@@ -77,7 +82,15 @@ import com.asys.editor.model.WireEdge;
 import com.asys.editor.model.WireEdgeCreationManager;
 import com.asys.editor.model.WireEdgeCreationManagerListener;
 import com.asys.editor.model.XorGate;
+import com.asys.model.components.exceptions.InvalidPropertyException;
+import com.asys.model.components.exceptions.NoKeyException;
+import com.asys.simulator.EventProcessor;
+import com.asys.simulator.EventProcessorListener;
+import com.asys.simulator.Gate;
 import com.asys.simulator.GateFactory;
+import com.asys.simulator.SimulatorModel;
+import com.asys.simulator.SimulatorModelListener;
+import com.asys.simulator.exceptions.IdNotExistException;
 
 /**
  * The has multiple layers, each layer is responsible for a specific task.
@@ -107,6 +120,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 	private ControlPanel control_pl;
 	private Mode mode;
 	private GateFactory gf;
+	private ColorGetter cg;
 	static private InnerElementPainter iePainter;
 
 	public Canvas() {
@@ -135,27 +149,18 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		ec_pl = new GateCreationPanel();
 		control_pl = new ControlPanel();
 		TestPanel test_pl = new TestPanel();
+		cg = new ColorGetter();
 		gf = GateFactory.getInstance();
-		grid_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		circuit_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		shl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		ehl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		dshl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		wc_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		wec_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		ec_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		control_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
-		test_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT);
+		grid_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		circuit_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		shl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		ehl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		dshl_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		wc_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		wec_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		ec_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		control_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
+		test_pl.setSize(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT);
 
 		wc_pl.setVisible(false);
 
@@ -165,9 +170,10 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		wcm.addListener(wc_pl);
 		wecm.addListener(wec_pl);
 		ecm.addListener(ec_pl);
+		EventProcessor.getInstance().addListener(circuit_pl);
+		SimulatorModel.getInstance().addListener(circuit_pl);
 
-		layers.setPreferredSize(new Dimension(Constant.DEFAULT_CANVAS_WIDTH,
-				Constant.DEFAULT_CANVAS_HEIGHT));
+		layers.setPreferredSize(new Dimension(Constant.DEFAULT_CANVAS_WIDTH, Constant.DEFAULT_CANVAS_HEIGHT));
 		layers.add(grid_pl, new Integer(100));
 		layers.add(circuit_pl, new Integer(101));
 		layers.add(ehl_pl, new Integer(102));
@@ -220,10 +226,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			changeMouseListener(e_ma);
 			changeMouseMotionListener(e_ma);
 			this.getActionMap().put("undo", new UndoAction());
-			this.getActionMap().put("rotate_clockwise",
-					new RotateClockwiseAction());
-			this.getActionMap().put("rotate_anticlockwise",
-					new RotateAntiClockwiseAction());
+			this.getActionMap().put("rotate_clockwise", new RotateClockwiseAction());
+			this.getActionMap().put("rotate_anticlockwise", new RotateAntiClockwiseAction());
 			this.getActionMap().put("delete", new DeleteAction());
 		}
 
@@ -255,69 +259,46 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				changeMouseListener(gc_ma);
 				changeMouseMotionListener(gc_ma);
 				changeKeyListener(gc_ka);
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.UNDO));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.UNDO));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
 				break;
 			case WIRE_CREATION_MODE:
 				changeMouseListener(wc_ma);
 				changeMouseMotionListener(wc_ma);
 				changeKeyListener(wc_ka);
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.UNDO));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.UNDO));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
 				break;
 			case WIRE_EDGE_CREATION_MODE:
 				changeMouseListener(wec_ma);
 				changeMouseMotionListener(wec_ma);
 				changeKeyListener(wec_ka);
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.UNDO));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.UNDO));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
 				break;
 			case EDIT_MODE:
 				changeMouseListener(e_ma);
 				changeMouseMotionListener(e_ma);
 				changeKeyListener(e_ka);
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
-						KeyStroke.getKeyStroke(Constant.UNDO), "undo");
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
-						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT),
-						"rotate_clockwise");
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
-						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT),
-						"rotate_anticlockwise");
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW)
-						.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
-								"delete");
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(Constant.UNDO), "undo");
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT), "rotate_clockwise");
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(Constant.ROTATE_LEFT), "rotate_anticlockwise");
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
 				break;
 			case SIMULATION_MODE:
 				changeMouseListener(new DummyMouseAdapter());
 				changeMouseMotionListener(new DummyMouseAdapter());
 				changeKeyListener(new DummyKeyAdapter());
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.UNDO));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
-				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(
-						KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.UNDO));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_RIGHT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(Constant.ROTATE_LEFT));
+				this.getInputMap(WHEN_IN_FOCUSED_WINDOW).remove(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
 				cmd.setCommandName(CommandName.DESELECT);
 				cmd.setParams(new Object[] {});
 				ext.execute(cmd);
@@ -454,8 +435,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				if (coordinateConvert(e.getX(), e.getY())) {
 					System.out.println("Mouse moved! x = " + x + ", y = " + y);
 					wcm.setBoth(x, y);
-					System.out.println("wcm x = " + wcm.getX() + ", y = "
-							+ wcm.getY());
+					System.out.println("wcm x = " + wcm.getX() + ", y = " + wcm.getY());
 				}
 			}
 
@@ -535,8 +515,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					dshl_pl.start();
 				} else {
 					if (sm.getSelectedWireEdge() != null) {
-						if (WireEdge.isOnWireEdge(new Point(x, y),
-								sm.getSelectedWireEdge())) {
+						if (WireEdge.isOnWireEdge(new Point(x, y), sm.getSelectedWireEdge())) {
 							pressedOnSelected = true;
 						} else {
 							dshl_pl.start();
@@ -586,17 +565,14 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				// Only perform the block if there has been a drag, ie, !(x0
 				// ==
 				// x && y0 == y)
-				if ((e.getModifiers() & MouseEvent.BUTTON1_MASK) != 0
-						&& !(x0 == x && y0 == y)) {
+				if ((e.getModifiers() & MouseEvent.BUTTON1_MASK) != 0 && !(x0 == x && y0 == y)) {
 					if (pressedOnSelected) {
 						cmd.setCommandName(CommandName.MOVE);
 						cmd.setParams(new Object[] { x - x0, y - y0 });
 						ext.execute(cmd);
 						shl_pl.resetDisplacement();
 					} else {
-						ArrayList<Element> elts_selected = cm
-								.getElementManager().getElementsInRectangle(
-										new Rectangle(x0, y0, x - x0, y - y0));
+						ArrayList<Element> elts_selected = cm.getElementManager().getElementsInRectangle(new Rectangle(x0, y0, x - x0, y - y0));
 						if (e.isControlDown()) {
 							cmd.setCommandName(CommandName.SELECT_GROUP_MULTI_ELEMENT);
 						} else {
@@ -624,8 +600,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					y0 = y;
 					// If Ctrl is held down
 					if (e.isControlDown()) {
-						Element elt_selected = cm.getElementManager()
-								.getElementAt(x, y);
+						Element elt_selected = cm.getElementManager().getElementAt(x, y);
 						if (elt_selected != null) {
 							cmd.setCommandName(CommandName.SELECT_MULTI_ELEMENT);
 							cmd.setParams(new Object[] { elt_selected });
@@ -648,8 +623,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 								ext.execute(cmd);
 								return;
 							}
-							Element elt = cm.getElementManager().getElementAt(
-									x, y);
+							Element elt = cm.getElementManager().getElementAt(x, y);
 							if (elt != null) {
 								cmd.setCommandName(CommandName.SELECT_ELEMENT);
 								cmd.setParams(new Object[] { elt });
@@ -698,8 +672,38 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				canShow = false;
 				this.removeAll();
 				this.available_op = null;
-				ArrayList<Outport> ops = cm.getElementManager().getOutportAt(x,
-						y);
+				ArrayList<Outport> ops = cm.getElementManager().getOutportAt(x, y);
+				final Element elt = cm.getElementManager().getElementAt(x, y);
+				if (elt instanceof EnvironmentGate) {
+					JMenuItem set_script_item = new JMenuItem("Set Script");
+					set_script_item.addActionListener(new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							String input = JOptionPane.showInputDialog("Input script");
+							if (input != null) {
+								Protocol protocol = new Protocol();
+								boolean valid_script = protocol.setString(input);
+								if (valid_script) {
+									try {
+										elt.getProperty().setProperty(ElementPropertyKey.PROTOCOL, protocol);
+										Application.getInstance().note("Protocol successfully set");
+									} catch (InvalidPropertyException e1) {
+										// TODO Auto-generated catch block
+										e1.printStackTrace();
+									} catch (NoKeyException e1) {
+										// TODO Auto-generated catch block
+										e1.printStackTrace();
+									}
+								} else {
+									JOptionPane.showMessageDialog(null, "Invalid script");
+								}
+							}
+						}
+					});
+					this.add(set_script_item);
+					canShow = true;
+				}
 				if (!ops.isEmpty()) {
 					available_op = null;
 					for (Outport op : ops) {
@@ -715,8 +719,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 							@Override
 							public void actionPerformed(ActionEvent e) {
 								wcm.setOutport(available_op);
-								ModeManager.getInstance().setMode(
-										Mode.WIRE_CREATION_MODE);
+								ModeManager.getInstance().setMode(Mode.WIRE_CREATION_MODE);
 							}
 
 						});
@@ -729,14 +732,12 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					final int we_index = selected_wire.getWireEdgeIndexAt(x, y);
 					if (we_index >= 0) {
 						// JMenuItem for adding routing points
-						JMenuItem add_rp_item = new JMenuItem(
-								"Add routing points");
+						JMenuItem add_rp_item = new JMenuItem("Add routing points");
 						add_rp_item.addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
 								wecm.start(selected_wire, we_index, x, y);
-								ModeManager.getInstance().setMode(
-										Mode.WIRE_EDGE_CREATION_MODE);
+								ModeManager.getInstance().setMode(Mode.WIRE_EDGE_CREATION_MODE);
 							}
 
 						});
@@ -747,8 +748,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 							@Override
 							public void actionPerformed(ActionEvent e) {
 								cmd.setCommandName(CommandName.CREATE_FANOUT);
-								cmd.setParams(new Object[] { selected_wire,
-										we_index, x, y });
+								cmd.setParams(new Object[] { selected_wire, we_index, x, y });
 								ext.execute(cmd);
 							}
 
@@ -802,8 +802,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	class GateCreationPanel extends JPanel implements
-			ElementCreationManagerListener {
+	class GateCreationPanel extends JPanel implements ElementCreationManagerListener {
 
 		GateCreationPanel() {
 			this.setOpaque(false);
@@ -881,8 +880,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	class WireCreationPanel extends JPanel implements
-			WireCreationManagerListener {
+	class WireCreationPanel extends JPanel implements WireCreationManagerListener {
 		WireCreationPanel() {
 			this.setOpaque(false);
 		}
@@ -894,15 +892,13 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 			Composite oldComp = g2d.getComposite();
 			Stroke oldStroke = g2d.getStroke();
-			Composite alphaComp = AlphaComposite.getInstance(
-					AlphaComposite.SRC_OVER, t);
+			Composite alphaComp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t);
 			g2d.setComposite(alphaComp);
 
 			if (wcm.isCreating()) {
 				assert wcm.getOutport() != null;
 				Element out_elt = wcm.getOutport().getParent();
-				highlightElement(g, out_elt, 0, 0, true,
-						Constant.WIRE_CREATION_CLR, 2 * r);
+				highlightElement(g, out_elt, 0, 0, true, Constant.WIRE_CREATION_CLR, 2 * r);
 				LinkedList<RoutingPoint> rps = wcm.getRoutingPoints();
 				rps.addFirst(new RoutingPoint(wcm.getOutport().getPosition()));
 				RoutingPoint rpa = null, rpb = rps.getFirst();
@@ -915,22 +911,17 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 						xb = rpb.getX() * m;
 						yb = rpb.getY() * m;
 						g2d.setColor(Constant.WIRE_CREATION_CLR);
-						g2d.setStroke(new BasicStroke(
-								Constant.WIRE_CREATION_WIDTH_RATIO * m,
-								BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+						g2d.setStroke(new BasicStroke(Constant.WIRE_CREATION_WIDTH_RATIO * m, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 						g2d.drawLine(xa, ya, xb, yb);
 					}
 					rpa = rpb;
 					i++;
 				}
 				g2d.setColor(Constant.WIRE_CREATION_CLR);
-				g2d.setStroke(new BasicStroke(Constant.WIRE_CREATION_WIDTH,
-						BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-				g2d.drawLine(rpb.getX() * m, rpb.getY() * m, wcm.getX() * m,
-						wcm.getY() * m);
+				g2d.setStroke(new BasicStroke(Constant.WIRE_CREATION_WIDTH, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g2d.drawLine(rpb.getX() * m, rpb.getY() * m, wcm.getX() * m, wcm.getY() * m);
 				if (wcm.getIPTemp() != null) {
-					highlightElement(g, wcm.getIPTemp().getParent(), 0, 0,
-							true, Constant.WIRE_CREATION_CLR, 2 * r);
+					highlightElement(g, wcm.getIPTemp().getParent(), 0, 0, true, Constant.WIRE_CREATION_CLR, 2 * r);
 				}
 			}
 
@@ -974,8 +965,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	class WireEdgeCreationPanel extends JPanel implements
-			WireEdgeCreationManagerListener {
+	class WireEdgeCreationPanel extends JPanel implements WireEdgeCreationManagerListener {
 
 		WireEdgeCreationPanel() {
 			this.setOpaque(false);
@@ -1008,17 +998,13 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 			Composite oldComp = g2d.getComposite();
 			Stroke oldStroke = g2d.getStroke();
-			Composite alphaComp = AlphaComposite.getInstance(
-					AlphaComposite.SRC_OVER, t);
+			Composite alphaComp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t);
 			g2d.setComposite(alphaComp);
 
 			if (wecm.isCreating()) {
-				int x1r = wecm.getX1() * m, y1r = wecm.getY1() * m, x2r = wecm
-						.getX2() * m, y2r = wecm.getY2() * m;
+				int x1r = wecm.getX1() * m, y1r = wecm.getY1() * m, x2r = wecm.getX2() * m, y2r = wecm.getY2() * m;
 				g2d.setColor(Constant.WIRE_EDGE_CREATION_CLR);
-				g2d.setStroke(new BasicStroke(
-						Constant.WIRE_EDGE_CREATION_WIDTH,
-						BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				g2d.setStroke(new BasicStroke(Constant.WIRE_EDGE_CREATION_WIDTH, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 				g2d.drawLine(x1r, y1r, x2r, y2r);
 			}
 			g2d.setComposite(oldComp);
@@ -1091,13 +1077,11 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 				Composite oldComp = g2d.getComposite();
 				Stroke oldStroke = g2d.getStroke();
-				Composite alphaComp = AlphaComposite.getInstance(
-						AlphaComposite.SRC_OVER, (float) (t * 0.3));
+				Composite alphaComp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (t * 0.3));
 				g2d.setComposite(alphaComp);
 
 				g2d.setColor(Constant.SELECTION_RECTANGLE_CLR);
-				g2d.fillRect(getMinX() * m, getMinY() * m, getW() * m, getH()
-						* m);
+				g2d.fillRect(getMinX() * m, getMinY() * m, getW() * m, getH() * m);
 
 				g2d.setComposite(oldComp);
 				g2d.setStroke(oldStroke);
@@ -1115,8 +1099,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		@Override
 		void customizedPaint(Graphics2D g2d) {
 			g2d.setColor(Constant.GRID_CLR);
-			int i = 0, max_x = this.getWidth() / m, max_y = this.getHeight()
-					/ m;
+			int i = 0, max_x = this.getWidth() / m, max_y = this.getHeight() / m;
 			while (i <= max_x) {
 				int j = 0;
 				while (j <= max_y) {
@@ -1129,8 +1112,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	class CircuitPanel extends BufferedPanel implements CircuitManagerListener,
-			ModeManagerListener {
+	class CircuitPanel extends BufferedPanel implements CircuitManagerListener, ModeManagerListener, EventProcessorListener, SimulatorModelListener {
 		private InnerElementPainter iep;
 
 		public CircuitPanel() {
@@ -1146,8 +1128,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 		@Override
 		public void modeChanged(Mode m) {
-			if ((mode != Mode.SIMULATION_MODE && m == Mode.SIMULATION_MODE)
-					|| (mode == Mode.SIMULATION_MODE && m != Mode.SIMULATION_MODE)) {
+			if ((mode != Mode.SIMULATION_MODE && m == Mode.SIMULATION_MODE) || (mode == Mode.SIMULATION_MODE && m != Mode.SIMULATION_MODE)) {
 				this.needToChange();
 				this.repaint();
 			}
@@ -1156,8 +1137,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		@Override
 		void customizedPaint(Graphics2D g2d) {
 			for (Element elt : cm.getElementManager().getElements()) {
-				g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-						RenderingHints.VALUE_ANTIALIAS_ON);
+				g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				g2d.setColor(Constant.ELEMENT_BORDER_CLR);
 				if (elt instanceof InputGate) {
 					iep.paint((InputGate) elt, g2d);
@@ -1194,25 +1174,30 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				}
 				// Paint the gate names
 				if (mode == Mode.SIMULATION_MODE) {
+					String gate_id = gf.getIdByElement(elt);
 					String gate_name = gf.getGateNameByElement(elt);
 					if (gate_name != null) {
-						g2d.drawString(gate_name, elt.getX() * m - m / 2,
-								elt.getY() * m - m / 2);
+						g2d.drawString(gate_id + ", " + gate_name, elt.getX() * m - m / 2, elt.getY() * m - m / 2);
 					}
 				}
 			}
 			g2d.setColor(Constant.WIRE_CLR);
 			for (Wire wire : cm.getWireManager().getWires()) {
+				if (mode == Mode.SIMULATION_MODE && SimulatorModel.getInstance().isBuilt()) {
+					g2d.setColor(cg.getColor(wire));
+					g2d.setStroke(new BasicStroke(3));
+				} else {
+					g2d.setColor(Constant.ELEMENT_BORDER_CLR);
+					g2d.setStroke(new BasicStroke(1));
+				}
 				for (WireEdge e : wire.getRoutingEdges()) {
-					g2d.drawLine(e.getP1().getX() * m, e.getP1().getY() * m, e
-							.getP2().getX() * m, e.getP2().getY() * m);
+					g2d.drawLine(e.getP1().getX() * m, e.getP1().getY() * m, e.getP2().getX() * m, e.getP2().getY() * m);
 					// paintArrow(g2d, e.getP1(), e.getDirection(), 1f, 1f);
 				}
 			}
 		}
 
-		private void paintArrow(Graphics2D g, Point p, Direction dir,
-				float base, float height) {
+		private void paintArrow(Graphics2D g, Point p, Direction dir, float base, float height) {
 			int[] xs, ys;
 			float b = base / 2, h = height;
 			float x1, x2, x3, y1, y2, y3, x_temp, b_temp, y_temp;
@@ -1275,7 +1260,47 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				break;
 			}
 		}
+	}
 
+	class ColorGetter {
+
+		public Color getColor(Element element) {
+			String gate_id = gf.getIdByElement(element);
+			System.out.println("Canvas.ColorGetter.getColor(Element element), gate_id = " + gate_id);
+			Gate gate;
+			try {
+				gate = gf.getGate(gate_id);
+				LogicValue lv = gate.getCurrentLogicValue();
+				switch (lv) {
+				case ONE:
+					return Color.green;
+				case X:
+					return Color.blue;
+				case ZERO:
+					return Color.black;
+				default:
+					return Color.red;
+				}
+			} catch (IdNotExistException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return Color.red;
+		}
+
+		public Color getColor(Wire wire) {
+			Element element = wire.getOutport().getParent();
+			while (element instanceof Fanout) {
+				List<Inport> ips = element.getInports();
+				assert ips.size() <= 1;
+				if (!ips.isEmpty()) {
+					element = ips.get(0).getWire().getOutport().getParent();
+				} else {
+					return Color.red;
+				}
+			}
+			return getColor(element);
+		}
 	}
 
 	class InnerElementPainter implements ElementRenderer {
@@ -1373,9 +1398,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				x2_ip = x1_ip + dx * w / 3;
 				y2_ip = y1_ip + dy * h / 3;
 				g2d.drawLine(x1_ip, y1_ip, x2_ip, y2_ip);
-				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip
-						- Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE,
-						Constant.GATE_KNOB_SIZE);
+				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip - Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE, Constant.GATE_KNOB_SIZE);
 			}
 			dx = -dx;
 			dy = -dy;
@@ -1385,9 +1408,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				x2_ip = x1_ip + dx * w / 3;
 				y2_ip = y1_ip + dy * h / 3;
 				g2d.drawLine(x1_ip, y1_ip, x2_ip, y2_ip);
-				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip
-						- Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE,
-						Constant.GATE_KNOB_SIZE);
+				g2d.fillOval(x1_ip - Constant.GATE_KNOB_SIZE / 2, y1_ip - Constant.GATE_KNOB_SIZE / 2, Constant.GATE_KNOB_SIZE, Constant.GATE_KNOB_SIZE);
 			}
 			/*
 			 * Paint element icon
@@ -1398,8 +1419,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 	}
 
-	class SelectionHighlightPanel extends BufferedPanel implements
-			SelectionManagerListener {
+	class SelectionHighlightPanel extends BufferedPanel implements SelectionManagerListener {
 		SelectionManager sm;
 		int dx, dy;
 
@@ -1428,8 +1448,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 		@Override
 		void customizedPaint(Graphics2D g2d) {
-			Composite alphaComp = AlphaComposite.getInstance(
-					AlphaComposite.SRC_OVER, t);
+			Composite alphaComp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t);
 			g2d.setComposite(alphaComp);
 
 			Wire wire = sm.getSelectedWire();
@@ -1439,25 +1458,21 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 			WireEdge edge = sm.getSelectedWireEdge();
 			if (edge != null) {
-				highlightWire(g2d, edge.getParent(), 0, 0,
-						Constant.WIRE_EDGE_HIGHLIGHT_CLR, r);
+				highlightWire(g2d, edge.getParent(), 0, 0, Constant.WIRE_EDGE_HIGHLIGHT_CLR, r);
 				highlightWireEdge(g2d, edge, dx, dy, new Color(0, 10, 0), r);
 			}
 
 			for (Element elt : sm.getGroupManager().getElements()) {
-				highlightElement(g2d, elt, dx, dy, true,
-						Constant.ELEMENT_HIGHLIGHT_CLR, r);
+				highlightElement(g2d, elt, dx, dy, true, Constant.ELEMENT_HIGHLIGHT_CLR, r);
 			}
 			for (Wire ind_wire : sm.getGroupManager().getInducedWires()) {
-				highlightWire(g2d, ind_wire, dx, dy,
-						Constant.WIRE_HIGHLIGHT_CLR, r);
+				highlightWire(g2d, ind_wire, dx, dy, Constant.WIRE_HIGHLIGHT_CLR, r);
 			}
 		}
 
 	}
 
-	class ErrorHighlightPanel extends BufferedPanel implements
-			CircuitManagerListener {
+	class ErrorHighlightPanel extends BufferedPanel implements CircuitManagerListener {
 
 		EdgeManager em;
 
@@ -1474,8 +1489,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 		@Override
 		void customizedPaint(Graphics2D g2d) {
-			Composite alphaComp = AlphaComposite.getInstance(
-					AlphaComposite.SRC_OVER, t);
+			Composite alphaComp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, t);
 			g2d.setComposite(alphaComp);
 
 			RadialGradientPaint radial_paint;
@@ -1490,11 +1504,9 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				if (Point.overlap(p1, p2)) { // So we paint a point
 					int x = p1.getX() * m;
 					int y = p1.getY() * m;
-					radial_paint = new RadialGradientPaint((float) x,
-							(float) y, r, dist, c);
+					radial_paint = new RadialGradientPaint((float) x, (float) y, r, dist, c);
 					g2d.setPaint(radial_paint);
-					g2d.fillOval(Math.round(x - r), Math.round(y - r),
-							Math.round(2 * r), Math.round(2 * r));
+					g2d.fillOval(Math.round(x - r), Math.round(y - r), Math.round(2 * r), Math.round(2 * r));
 				} else { // We paint a line
 					int x1 = p1.getX() * m;
 					int y1 = p1.getY() * m;
@@ -1505,14 +1517,11 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					float mod = (float) Math.sqrt(x * x + y * y);
 					float nx = ((float) x) / mod * r;
 					float ny = ((float) y) / mod * r;
-					lp = new LinearGradientPaint((float) x1, (float) y1,
-							((float) x1) - ny, ((float) y1) + nx, dist, c,
+					lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1) - ny, ((float) y1) + nx, dist, c,
 							MultipleGradientPaint.CycleMethod.REFLECT);
 					g2d.setPaint(lp);
-					int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
-							Math.round(x2 + ny), Math.round(x1 + ny) };
-					int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
-							Math.round(y2 - nx), Math.round(y1 - nx) };
+					int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny), Math.round(x2 + ny), Math.round(x1 + ny) };
+					int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx), Math.round(y2 - nx), Math.round(y1 - nx) };
 					Polygon poly = new Polygon(xpoints, ypoints, 4);
 					g2d.fill(poly);
 				}
@@ -1533,8 +1542,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 
 	}
 
-	void highlightWireEdge(Graphics g, WireEdge edge, int dx, int dy,
-			Color color, float rad) {
+	void highlightWireEdge(Graphics g, WireEdge edge, int dx, int dy, Color color, float rad) {
 		Graphics2D g2d = (Graphics2D) g;
 
 		LinearGradientPaint lp;
@@ -1553,21 +1561,16 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		float mod = (float) Math.sqrt(x * x + y * y);
 		float nx = ((float) x) / mod * rad;
 		float ny = ((float) y) / mod * rad;
-		lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1) - ny,
-				((float) y1) + nx, dist, c,
-				MultipleGradientPaint.CycleMethod.REFLECT);
+		lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1) - ny, ((float) y1) + nx, dist, c, MultipleGradientPaint.CycleMethod.REFLECT);
 		g2d.setPaint(lp);
-		int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
-				Math.round(x2 + ny), Math.round(x1 + ny) };
-		int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
-				Math.round(y2 - nx), Math.round(y1 - nx) };
+		int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny), Math.round(x2 + ny), Math.round(x1 + ny) };
+		int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx), Math.round(y2 - nx), Math.round(y1 - nx) };
 		Polygon poly = new Polygon(xpoints, ypoints, 4);
 		g2d.fill(poly);
 
 	}
 
-	void highlightWire(Graphics g, Wire wire, int dx, int dy, Color color,
-			float rad) {
+	void highlightWire(Graphics g, Wire wire, int dx, int dy, Color color, float rad) {
 		if (wire != null) {
 			Graphics2D g2d = (Graphics2D) g;
 			LinearGradientPaint lp;
@@ -1586,14 +1589,10 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				float mod = (float) Math.sqrt(x * x + y * y);
 				float nx = ((float) x) / mod * rad;
 				float ny = ((float) y) / mod * rad;
-				lp = new LinearGradientPaint((float) x1, (float) y1,
-						((float) x1) - ny, ((float) y1) + nx, dist, c,
-						MultipleGradientPaint.CycleMethod.REFLECT);
+				lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1) - ny, ((float) y1) + nx, dist, c, MultipleGradientPaint.CycleMethod.REFLECT);
 				g2d.setPaint(lp);
-				int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny),
-						Math.round(x2 + ny), Math.round(x1 + ny) };
-				int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx),
-						Math.round(y2 - nx), Math.round(y1 - nx) };
+				int[] xpoints = { Math.round(x1 - ny), Math.round(x2 - ny), Math.round(x2 + ny), Math.round(x1 + ny) };
+				int[] ypoints = { Math.round(y1 + nx), Math.round(y2 + nx), Math.round(y2 - nx), Math.round(y1 - nx) };
 				Polygon poly = new Polygon(xpoints, ypoints, 4);
 				g2d.fill(poly);
 			}
@@ -1602,8 +1601,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 		}
 	}
 
-	void highlightElement(Graphics g, Element elt, int dx, int dy,
-			boolean innerGlow, Color color, float rad) {
+	void highlightElement(Graphics g, Element elt, int dx, int dy, boolean innerGlow, Color color, float rad) {
 		if (elt != null) {
 			int inner_glow_coef = innerGlow ? 1 : -1;
 			Graphics2D g2d = (Graphics2D) g;
@@ -1611,8 +1609,7 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 			if (elt instanceof Fanout) {
 				Stroke old_stroke = g2d.getStroke();
 				Color old_color = g2d.getColor();
-				g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND,
-						BasicStroke.JOIN_ROUND));
+				g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 				g2d.setColor(Color.BLACK);
 				int x0 = (elt.getX() + dx) * m;
 				int y0 = (elt.getY() + dy) * m;
@@ -1620,10 +1617,8 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 				int m_half = Math.round(((float) m) / 2);
 				for (int i : new int[] { -1, 1 }) {
 					for (int j : new int[] { -1, 1 }) {
-						g2d.drawLine(x0 + m_half * i, y0 + m_half * j, x0
-								+ m_quater * i, y0 + m_half * j);
-						g2d.drawLine(x0 + m_half * i, y0 + m_half * j, x0
-								+ m_half * i, y0 + m_quater * j);
+						g2d.drawLine(x0 + m_half * i, y0 + m_half * j, x0 + m_quater * i, y0 + m_half * j);
+						g2d.drawLine(x0 + m_half * i, y0 + m_half * j, x0 + m_half * i, y0 + m_quater * j);
 					}
 				}
 				g2d.setColor(old_color);
@@ -1639,19 +1634,14 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 					Point p = elt.getPosition();
 					int x = (p.getX() + dx) * m;
 					int y = (p.getY() + dy) * m;
-					radial_paint = new RadialGradientPaint((float) x,
-							(float) y, rad, dist, c);
+					radial_paint = new RadialGradientPaint((float) x, (float) y, rad, dist, c);
 					g2d.setPaint(radial_paint);
-					g2d.fillOval(Math.round(x - rad), Math.round(y - rad),
-							Math.round(2 * rad), Math.round(2 * rad));
+					g2d.fillOval(Math.round(x - rad), Math.round(y - rad), Math.round(2 * rad), Math.round(2 * rad));
 				} else {
 					ArrayList<Point> points = new ArrayList<Point>();
-					points.add(new Point(elt.getX() + elt.getWidth(), elt
-							.getY()));
-					points.add(new Point(elt.getX() + elt.getWidth(), elt
-							.getY() + elt.getHeight()));
-					points.add(new Point(elt.getX(), elt.getY()
-							+ elt.getHeight()));
+					points.add(new Point(elt.getX() + elt.getWidth(), elt.getY()));
+					points.add(new Point(elt.getX() + elt.getWidth(), elt.getY() + elt.getHeight()));
+					points.add(new Point(elt.getX(), elt.getY() + elt.getHeight()));
 					points.add(new Point(elt.getX(), elt.getY()));
 
 					Point p1 = new Point(elt.getX(), elt.getY());
@@ -1667,16 +1657,11 @@ public class Canvas extends JScrollPane implements ModeManagerListener {
 						float mod = (float) Math.sqrt(x * x + y * y);
 						float nx = 2 * ((float) x) / mod * rad;
 						float ny = 2 * ((float) y) / mod * rad;
-						lp = new LinearGradientPaint((float) x1, (float) y1,
-								((float) x1) - ny, ((float) y1) + nx, dist, c,
+						lp = new LinearGradientPaint((float) x1, (float) y1, ((float) x1) - ny, ((float) y1) + nx, dist, c,
 								MultipleGradientPaint.CycleMethod.NO_CYCLE);
 						g2d.setPaint(lp);
-						int[] xpoints = {
-								Math.round(x1 - ny * inner_glow_coef),
-								Math.round(x2 - ny * inner_glow_coef), x2, x1 };
-						int[] ypoints = {
-								Math.round(y1 + nx * inner_glow_coef),
-								Math.round(y2 + nx * inner_glow_coef), y2, y1 };
+						int[] xpoints = { Math.round(x1 - ny * inner_glow_coef), Math.round(x2 - ny * inner_glow_coef), x2, x1 };
+						int[] ypoints = { Math.round(y1 + nx * inner_glow_coef), Math.round(y2 + nx * inner_glow_coef), y2, y1 };
 						Polygon poly = new Polygon(xpoints, ypoints, 4);
 						g2d.fill(poly);
 						p1 = p2;
@@ -1738,8 +1723,7 @@ abstract class BufferedPanel extends JPanel {
 		Graphics2D g2d = (Graphics2D) g;
 		if (isDirty) {
 			if (buf == null) {
-				buf = new BufferedImage(this.getWidth(), this.getHeight(),
-						java.awt.image.BufferedImage.TYPE_INT_ARGB);
+				buf = new BufferedImage(this.getWidth(), this.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
 			}
 			Graphics2D gc = buf.createGraphics();
 			customizedPaint(gc);

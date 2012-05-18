@@ -9,13 +9,17 @@ import java.util.List;
 
 import com.asys.constants.Constant;
 import com.asys.constants.Direction;
+import com.asys.constants.ElementPropertyKey;
 import com.asys.editor.model.Element.ElementPortState;
 import com.asys.editor.model.SelectionManager.SelectionManagerState;
 import com.asys.editor.model.Wire.WireState;
 import com.asys.model.components.exceptions.DuplicateElementException;
 import com.asys.model.components.exceptions.ElementOverlappingException;
+import com.asys.model.components.exceptions.InvalidPropertyException;
+import com.asys.model.components.exceptions.InvalidPropertyKeyException;
 import com.asys.model.components.exceptions.InvalidRoutingPointException;
 import com.asys.model.components.exceptions.MaxNumberOfPortsOutOfBoundException;
+import com.asys.model.components.exceptions.NoKeyException;
 import com.asys.model.components.exceptions.OverlappingElementException;
 import com.asys.model.components.exceptions.PortNumberOutOfBoundException;
 import com.asys.system.MainApplication;
@@ -76,6 +80,12 @@ public class Executor {
 		case CHANGE_NUMBER_OF_OUTPORT:
 			changeNumberOfOutport(params);
 			break;
+		case CHANGE_MIN_DELAY:
+			changeMinDelay(params);
+			break;
+		case CHANGE_MAX_DELAY:
+			changeMaxDelay(params);
+			break;
 		case SELECT_WIRE:
 			selectWire(params);
 			break;
@@ -132,8 +142,7 @@ public class Executor {
 					cm.fireStateChangedEvent();
 					return true;
 				} catch (DuplicateElementException e) {
-					Application.getInstance().note(
-							"Duplicated elements detected!");
+					Application.getInstance().note("Duplicated elements detected!");
 				} catch (OverlappingElementException e) {
 					Application.getInstance().note("Cannot overlap elements!");
 				}
@@ -163,8 +172,7 @@ public class Executor {
 			if (index == 0 && y == edge.getP1().getY())
 				return; // If the creation position is an Outport, then the
 						// Fanout cannot be created.
-			if (index == wire.getRoutingEdges().size() - 1
-					&& y == edge.getP2().getY())
+			if (index == wire.getRoutingEdges().size() - 1 && y == edge.getP2().getY())
 				return; // If the creation position is an Inport
 			if (WireEdge.isOnWireEdge(new Point(x, y), edge))
 				;
@@ -174,8 +182,7 @@ public class Executor {
 			if (index == 0 && x == edge.getP1().getX())
 				return;// If the creation position is an Outport, then the
 						// Fanout cannot be created.
-			if (index == wire.getRoutingEdges().size() - 1
-					&& x == edge.getP2().getX())
+			if (index == wire.getRoutingEdges().size() - 1 && x == edge.getP2().getX())
 				return;
 			if (WireEdge.isOnWireEdge(new Point(x, y), edge))
 				;
@@ -203,8 +210,7 @@ public class Executor {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (OverlappingElementException e) {
-					Application.getInstance().note(
-							"Fanout overlaps other gates!");
+					Application.getInstance().note("Fanout overlaps other gates!");
 					return false;
 				}
 				for (int i = 0; i < index; i++) {
@@ -214,15 +220,13 @@ public class Executor {
 					rps2.addLast(new RoutingPoint(rps.get(i)));
 				}
 				try {
-					new_wire_1 = new Wire(wire_deleted.getOutport(),
-							fanout.getInport(0), rps1);
+					new_wire_1 = new Wire(wire_deleted.getOutport(), fanout.getInport(0), rps1);
 				} catch (PortNumberOutOfBoundException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				try {
-					new_wire_2 = new Wire(fanout.getOutport(0),
-							wire_deleted.getInport(), rps2);
+					new_wire_2 = new Wire(fanout.getOutport(0), wire_deleted.getInport(), rps2);
 				} catch (PortNumberOutOfBoundException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -308,8 +312,7 @@ public class Executor {
 			public boolean run() {
 				previous_wire_state = wire.exportState();
 				previous_sm_state = sm.exportState();
-				boolean successful = wire.addRoutingPoints(index, x1, y1, x2,
-						y2);
+				boolean successful = wire.addRoutingPoints(index, x1, y1, x2, y2);
 				if (successful) {
 					sm.deselect();
 					sm.fireCircuitStateChanged();
@@ -371,12 +374,9 @@ public class Executor {
 					@Override
 					public boolean run() {
 						sm_state = sm.exportState();
-						ind_wires = (ArrayList<Wire>) sm.getGroupManager()
-								.getInducedWires().clone();
-						inc_wires = sm.getGroupManager()
-								.getIncidentWireManager().getAllWires();
-						elts = (ArrayList<Element>) sm.getGroupManager()
-								.getElements().clone();
+						ind_wires = (ArrayList<Wire>) sm.getGroupManager().getInducedWires().clone();
+						inc_wires = sm.getGroupManager().getIncidentWireManager().getAllWires();
+						elts = (ArrayList<Element>) sm.getGroupManager().getElements().clone();
 						wire_states = new ArrayList<WireState>();
 						wm.remove(ind_wires);
 						wm.remove(inc_wires);
@@ -432,10 +432,8 @@ public class Executor {
 						WireEdge edge = sm.getSelectedWireEdge();
 						Wire wire = edge.getParent();
 						wire_state = wire.exportState();
-						LinkedList<WireEdge> old_edges = (LinkedList<WireEdge>) wire
-								.getRoutingEdges().clone();
-						boolean hasRoutingPointsChanged = wire.moveEdge(
-								edge.getIndex(), dx, dy);
+						LinkedList<WireEdge> old_edges = (LinkedList<WireEdge>) wire.getRoutingEdges().clone();
+						boolean hasRoutingPointsChanged = wire.moveEdge(edge.getIndex(), dx, dy);
 						if (hasRoutingPointsChanged) {
 							sm.deselect();
 						}
@@ -461,14 +459,12 @@ public class Executor {
 					public boolean run() {
 						try {
 							wireStates.clear();
-							for (Wire wire : sm.getGroupManager()
-									.getIncidentWireManager().getAllWires()) {
+							for (Wire wire : sm.getGroupManager().getIncidentWireManager().getAllWires()) {
 								wireStates.add(wire.exportState());
 							}
 							sm.getGroupManager().move(dx, dy);
 						} catch (ElementOverlappingException e) {
-							Application.getInstance().note(
-									"Overlapping of Elements detected!");
+							Application.getInstance().note("Overlapping of Elements detected!");
 							return false;
 						}
 						sm.fireCircuitStateChanged();
@@ -515,11 +511,8 @@ public class Executor {
 					elt = sm.getGroupManager().getElements().get(0);
 					int wa = elt.getHeight();
 					int ha = elt.getWidth();
-					if (eltm.getExcludeElementDictionary().overlapping(
-							elt.getX(), elt.getY(), wa, ha)) {
-						Application
-								.getInstance()
-								.note("Cannot rotate, otherwise gates would overlap.");
+					if (eltm.getExcludeElementDictionary().overlapping(elt.getX(), elt.getY(), wa, ha)) {
+						Application.getInstance().note("Cannot rotate, otherwise gates would overlap.");
 						return false;
 					} else {
 						// Back up the old orientation.
@@ -557,13 +550,11 @@ public class Executor {
 						}
 						// Back up the incident wire states and adjust the
 						// wire's routing points
-						for (Wire wire : sm.getGroupManager()
-								.getIncidentWireManager().getInComingWires()) {
+						for (Wire wire : sm.getGroupManager().getIncidentWireManager().getInComingWires()) {
 							wireStates.add(wire.exportState());
 							wire.adjustForInport();
 						}
-						for (Wire wire : sm.getGroupManager()
-								.getIncidentWireManager().getOutGoingWires()) {
+						for (Wire wire : sm.getGroupManager().getIncidentWireManager().getOutGoingWires()) {
 							wireStates.add(wire.exportState());
 							wire.adjustForOutport();
 						}
@@ -576,9 +567,7 @@ public class Executor {
 					Application.getInstance().note("Select a gate first.");
 					return false;
 				} else {
-					Application
-							.getInstance()
-							.note("Too many gates selected.  Can only rotate one gate at a time.");
+					Application.getInstance().note("Too many gates selected.  Can only rotate one gate at a time.");
 					return false;
 				}
 			}
@@ -629,53 +618,45 @@ public class Executor {
 						return false;
 					} else {
 						if (elt.canChangeNumIPs()) {
-							Rectangle expected_bound = Element.getNewBound(elt,
-									numIPs, true);
-							boolean overlap = eltm
-									.getExcludeElementDictionary().overlapping(
-											expected_bound.getX(),
-											expected_bound.getY(),
-											expected_bound.getWidth(),
-											expected_bound.getHeight());
+							Rectangle expected_bound = Element.getNewBound(elt, numIPs, true);
+							boolean overlap = eltm.getExcludeElementDictionary().overlapping(expected_bound.getX(), expected_bound.getY(),
+									expected_bound.getWidth(), expected_bound.getHeight());
 							if (overlap) {
-								Application.getInstance().note(
-										"There would be overlapping");
+								Application.getInstance().note("There would be overlapping");
 								return false;
 							} else {
 								// Back up the states
 								port_state = elt.exportPortState();
-								for (Wire wire:sm.getGroupManager().getIncidentWireManager().getAllWires()){
+								for (Wire wire : sm.getGroupManager().getIncidentWireManager().getAllWires()) {
 									wire_states.add(wire.exportState());
 								}
-								for (Wire wire:sm.getGroupManager().getInducedWires()){
+								for (Wire wire : sm.getGroupManager().getInducedWires()) {
 									wire_states.add(wire.exportState());
 								}
-								
+
 								try {
 									elt.setNumberOfIPs(numIPs);
 									eltm.getElementDictionary().scale(elt);
 									eltm.getExcludeElementDictionary().scale(elt);
-									for (Wire wire:sm.getGroupManager().getIncidentWireManager().getInComingWires()){
+									for (Wire wire : sm.getGroupManager().getIncidentWireManager().getInComingWires()) {
 										wire.adjustForInport();
 									}
-									for (Wire wire:sm.getGroupManager().getIncidentWireManager().getOutGoingWires()){
+									for (Wire wire : sm.getGroupManager().getIncidentWireManager().getOutGoingWires()) {
 										wire.adjustForOutport();
 									}
-									for (Wire wire:sm.getGroupManager().getInducedWires()){
+									for (Wire wire : sm.getGroupManager().getInducedWires()) {
 										wire.adjustForInport();
 										wire.adjustForOutport();
 									}
 									sm.fireCircuitStateChanged();
 									return true;
 								} catch (MaxNumberOfPortsOutOfBoundException e) {
-									Application.getInstance().note(
-											"The new number is too small");
+									Application.getInstance().note("The new number is too small");
 									return false;
 								}
 							}
 						} else {
-							Application.getInstance().note(
-									"Cannot change the number of inports");
+							Application.getInstance().note("Cannot change the number of inports");
 							return false;
 						}
 					}
@@ -684,7 +665,7 @@ public class Executor {
 				@Override
 				public void undo() {
 					port_state.restore();
-					for (WireState state:wire_states){
+					for (WireState state : wire_states) {
 						state.restore();
 					}
 					sm.fireCircuitStateChanged();
@@ -693,8 +674,7 @@ public class Executor {
 			};
 			queue.enqueue(change_maxIPs_action);
 		} else {
-			Application.getInstance().note(
-					"Must select exactly one gate to edit");
+			Application.getInstance().note("Must select exactly one gate to edit");
 		}
 	}
 
@@ -730,53 +710,45 @@ public class Executor {
 						return false;
 					} else {
 						if (elt.canChangeNumOPs()) {
-							Rectangle expected_bound = Element.getNewBound(elt,
-									numOPs, true);
-							boolean overlap = eltm
-									.getExcludeElementDictionary().overlapping(
-											expected_bound.getX(),
-											expected_bound.getY(),
-											expected_bound.getWidth(),
-											expected_bound.getHeight());
+							Rectangle expected_bound = Element.getNewBound(elt, numOPs, true);
+							boolean overlap = eltm.getExcludeElementDictionary().overlapping(expected_bound.getX(), expected_bound.getY(),
+									expected_bound.getWidth(), expected_bound.getHeight());
 							if (overlap) {
-								Application.getInstance().note(
-										"There would be overlapping");
+								Application.getInstance().note("There would be overlapping");
 								return false;
 							} else {
 								// Back up the states
 								port_state = elt.exportPortState();
-								for (Wire wire:sm.getGroupManager().getIncidentWireManager().getAllWires()){
+								for (Wire wire : sm.getGroupManager().getIncidentWireManager().getAllWires()) {
 									wire_states.add(wire.exportState());
 								}
-								for (Wire wire:sm.getGroupManager().getInducedWires()){
+								for (Wire wire : sm.getGroupManager().getInducedWires()) {
 									wire_states.add(wire.exportState());
 								}
-								
+
 								try {
 									elt.setNumberOfIPs(numOPs);
 									eltm.getElementDictionary().scale(elt);
 									eltm.getExcludeElementDictionary().scale(elt);
-									for (Wire wire:sm.getGroupManager().getIncidentWireManager().getInComingWires()){
+									for (Wire wire : sm.getGroupManager().getIncidentWireManager().getInComingWires()) {
 										wire.adjustForInport();
 									}
-									for (Wire wire:sm.getGroupManager().getIncidentWireManager().getOutGoingWires()){
+									for (Wire wire : sm.getGroupManager().getIncidentWireManager().getOutGoingWires()) {
 										wire.adjustForOutport();
 									}
-									for (Wire wire:sm.getGroupManager().getInducedWires()){
+									for (Wire wire : sm.getGroupManager().getInducedWires()) {
 										wire.adjustForInport();
 										wire.adjustForOutport();
 									}
 									sm.fireCircuitStateChanged();
 									return true;
 								} catch (MaxNumberOfPortsOutOfBoundException e) {
-									Application.getInstance().note(
-											"The new number is too small");
+									Application.getInstance().note("The new number is too small");
 									return false;
 								}
 							}
 						} else {
-							Application.getInstance().note(
-									"Cannot change the number of inports");
+							Application.getInstance().note("Cannot change the number of inports");
 							return false;
 						}
 					}
@@ -785,7 +757,7 @@ public class Executor {
 				@Override
 				public void undo() {
 					port_state.restore();
-					for (WireState state:wire_states){
+					for (WireState state : wire_states) {
 						state.restore();
 					}
 					sm.fireCircuitStateChanged();
@@ -794,9 +766,126 @@ public class Executor {
 			};
 			queue.enqueue(change_maxIPs_action);
 		} else {
-			Application.getInstance().note(
-					"Must select exactly one gate to edit");
+			Application.getInstance().note("Must select exactly one gate to edit");
 		}
+	}
+
+	private void changeMinDelay(Object[] params) {
+		final long newDelay = Long.parseLong((String) params[0]);
+		final Element elt = (Element) params[1];
+		final Property prop = elt.getProperty();
+		
+		Action change_min_delay_action = new Action() {
+			long old_min_delay;
+			
+			@Override
+			public boolean run() {
+				if (newDelay < 0) {
+					Application.getInstance().note("Delay value cannot be less than 0");
+					return false;
+				}
+				final long max_delay;
+				try {
+					max_delay = (Long) prop.getProperty(ElementPropertyKey.MAX_DELAY);
+					old_min_delay = (Long) prop.getProperty(ElementPropertyKey.MIN_DELAY);
+					if (newDelay > max_delay) {
+						Application.getInstance().note("Min delay cannot be greater than max delay");
+						return false;
+					}
+					prop.setProperty(ElementPropertyKey.MIN_DELAY, newDelay);
+				} catch (InvalidPropertyKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				} catch (InvalidPropertyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				} catch (NoKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				}
+				
+				return true;
+				
+			}
+			
+			@Override
+			public void undo() {
+				try {
+					prop.setProperty(ElementPropertyKey.MIN_DELAY, old_min_delay);
+				} catch (InvalidPropertyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (NoKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		};
+		queue.enqueue(change_min_delay_action);
+
+	}
+	
+	private void changeMaxDelay(Object[] params) {
+		final long newDelay = Long.parseLong((String) params[0]);
+		final Element elt = (Element) params[1];
+		final Property prop = elt.getProperty();
+		
+		Action change_max_delay_action = new Action() {
+			long old_max_delay;
+			
+			@Override
+			public boolean run() {
+				if (newDelay < 0) {
+					Application.getInstance().note("Delay value cannot be less than 0");
+					return false;
+				}
+				final long min_delay;
+				try {
+					min_delay = (Long) prop.getProperty(ElementPropertyKey.MIN_DELAY);
+					old_max_delay = (Long) prop.getProperty(ElementPropertyKey.MAX_DELAY);
+					if (newDelay < min_delay) {
+						Application.getInstance().note("Max delay cannot be less than min delay");
+						return false;
+					}
+					prop.setProperty(ElementPropertyKey.MAX_DELAY, newDelay);
+				} catch (InvalidPropertyKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				} catch (InvalidPropertyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				} catch (NoKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					return false;
+				}
+				
+				return true;
+				
+			}
+			
+			@Override
+			public void undo() {
+				try {
+					prop.setProperty(ElementPropertyKey.MAX_DELAY, old_max_delay);
+				} catch (InvalidPropertyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (NoKeyException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		};
+		queue.enqueue(change_max_delay_action);
+
 	}
 
 	private void selectWire(Object[] params) {
@@ -1097,9 +1186,7 @@ public class Executor {
 				pt--;
 				act.undo();
 			} else {
-				Application.getInstance().note(
-						"No more actions to undo.  Current maximum aciton stack size is "
-								+ max_length + ".");
+				Application.getInstance().note("No more actions to undo.  Current maximum aciton stack size is " + max_length + ".");
 			}
 		}
 
